@@ -106,10 +106,44 @@ $my_user = $_SESSION['username'];
 </div>
 
 <div class="main-chat">
-    <div class="empty-state">
-        <h1 style="color: var(--accent);">Zdravo, <?php echo htmlspecialchars($my_user); ?>! 👋</h1>
-        <p>Izaberi konverzaciju sa leve strane da počneš.</p>
+    <div class="main-chat" style="justify-content: flex-start; overflow-y: auto; padding: 40px;">
+    <div style="max-width: 700px; width: 100%;">
+        <h1 style="color: var(--accent); margin-bottom: 5px;">Zdravo, <?php echo htmlspecialchars($my_user); ?>! 👋</h1>
+        <p style="color: var(--text-muted); margin-bottom: 30px;">Dobrodošli na Chatter Global Board.</p>
+
+        <!-- FORMA ZA ADMINA -->
+        <?php if ($is_admin): ?>
+            <div style="background: var(--sidebar-bg); padding: 20px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 40px;">
+                <h3 style="margin-top: 0; color: var(--accent);">Nova objava</h3>
+                <form method="POST">
+                    <input type="text" name="news_title" placeholder="Naslov vesti..." required 
+                           style="width: 100%; padding: 10px; background: #111; border: 1px solid var(--border); color: white; border-radius: 5px; margin-bottom: 10px;">
+                    <textarea name="news_content" placeholder="Šta ti je na umu?" required 
+                              style="width: 100%; padding: 10px; background: #111; border: 1px solid var(--border); color: white; border-radius: 5px; height: 100px; font-family: inherit;"></textarea>
+                    <button type="submit" name="post_news" class="btn-send" style="margin-top: 10px; width: 100%; height: 40px;">Objavi na zid</button>
+                </form>
+            </div>
+        <?php endif; ?>
+
+        <!-- PRIKAZ VESTI (VIDE SVI) -->
+        <div class="news-feed">
+            <?php
+            $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
+            foreach ($news as $n): ?>
+                <div style="background: var(--sidebar-bg); padding: 20px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px;">
+                    <small style="color: var(--accent); font-weight: bold;">ADMIN POST • <?php echo date("d.m.Y H:i", strtotime($n['created_at'])); ?></small>
+                    <h2 style="margin: 10px 0; color: var(--text-main);"><?php echo htmlspecialchars($n['title']); ?></h2>
+                    <p style="color: #ccc; line-height: 1.6; white-space: pre-wrap;"><?php echo htmlspecialchars($n['content']); ?></p>
+                </div>
+            <?php endforeach; ?>
+            
+            <?php if (empty($news)): ?>
+                <p style="text-align: center; color: var(--text-muted);">Trenutno nema novih vesti na tabli.</p>
+            <?php endif; ?>
+        </div>
     </div>
+</div>
+
 </div>
 
 </body>
