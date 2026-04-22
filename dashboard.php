@@ -122,10 +122,24 @@ $my_user = $_SESSION['username'];
         $stmt->execute([$my_id, $my_id, $my_id]);
         $friends = $stmt->fetchAll();
         foreach ($friends as $f) {
-            echo "<div style='padding: 10px 0; border-bottom: 1px solid #333;'>";
-            echo "<a href='chat.php?user_id=" . $f['id'] . "' style='color: white; text-decoration: none;'>● " . htmlspecialchars($f['username']) . "</a>";
-            echo "</div>";
-        }
+    // 1. Proveri koliko ima nepročitanih poruka od ovog prijatelja za TEBE
+    $stmt_unread = $pdo->prepare("SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND receiver_id = ? AND seen = 0");
+    $stmt_unread->execute([$f['id'], $my_id]);
+    $unread_count = $stmt_unread->fetchColumn();
+
+    $badge = "";
+    if ($unread_count > 0) {
+        $badge = "<span style='background: #dd0000ff; color: white; padding: 2px 6px; border-radius: 50%; font-size: 10px; margin-left: 10px;'>$unread_count</span>";
+    }
+
+    echo "<div style='padding: 10px 0; border-bottom: 1px solid #333;'>";
+    echo "<a href='chat.php?user_id=" . $f['id'] . "' style='color: white; text-decoration: none; display: flex; justify-content: space-between; align-items: center;'>";
+    echo "<span>● " . htmlspecialchars($f['username']) . "</span>";
+    echo $badge;
+    echo "</a>";
+    echo "</div>";
+}
+
         ?>
     </div>
 </div>
