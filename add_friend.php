@@ -2,37 +2,32 @@
 session_start();
 require_once 'db_chatter.php';
 
-if (!isset($_SESSION['user_id'])) exit;
+// Provera da li smo dobili ID onoga koga dodajemo i da li smo ulogovani
+if (isset($_GET['id']) && isset($_SESSION['user_id'])) {
+    $friend_id = (int)$_GET['id'];
+    $my_id = (int)$_SESSION['user_id'];
 
-$my_id = $_SESSION['user_id'];
-$query = $_GET['q'] ?? '';
+    // Ne možeš dodati samog sebe
+    if ($friend_id === $my_id) {
+        header("Location: dashboard.php");
+        exit();
+    }
 
-// Tražimo korisnike čije ime sadrži pojam, a da to nismo mi
-$stmt = $pdo->prepare("SELECT id, username FROM users WHERE username LIKE ? AND id != ?");
-$stmt->execute(["%$query%", $my_id]);
-$users = $stmt->fetchAll();
-?>
+    try {
+        // Proveravamo da li zahtev već postoji da ne dupliramo
+        $check = $pdo->prepare("SELECT * FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)");
+        $check->execute([$my_id, $friend_id, $friend_id, $my_id]);
+        
+        if ($check->rowCount() == 0) {
+            // Ubacujemo novi zahtev. Status je 'pending' po defaultu (vidi SQL strukturu)
+            $stmt = $pdo->prepare("INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, 'pending')");
+            $stmt->execute([$my_id, $friend_id]);
+        }
+    } catch (Exception $e) {
+        // Ignorišemo grešku ako već postoji zapis
+    }
+}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pretraga</title>
-    <link rel="stylesheet" href="../style.css">
-    <style>
-        body { background: #1a1a1a; color: white; padding: 20px; font-family: sans-serif; }
-        .user-row { background: #252525; padding: 15px; margin-bottom: 10px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .add-btn { background: #00adb5; color: white; border: none; padding: 5px 15px; cursor: pointer; text-decoration: none; border-radius: 3px; }
-    </style>
-</head>
-<body>
-    <h2>Rezultati pretrage za: "<?php echo htmlspecialchars($query); ?>"</h2>
-    <a href="dashboard.php" style="color: #00adb5;">← Nazad</a><br><br>
-
-    <?php foreach ($users as $u): ?>
-        <div class="user-row">
-            <span><?php echo htmlspecialchars($u['username']); ?></span>
-            <a href="add_friend.php?id=<?php echo $u['id']; ?>" class="add-btn">Dodaj prijatelja</a>
-        </div>
-    <?php endforeach; ?>
-</body>
-</html>
+// Vraćamo se na dashboard
+header("Location: dashboard.php?msg=zahtev_poslat");
+exit();
