@@ -16,7 +16,7 @@ $my_user = $_SESSION['username'];
 <head>
     <meta charset="UTF-8">
     <title>Chatter | Dashboard</title>
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
