@@ -2,10 +2,20 @@
 session_start();
 require_once 'db_chatter.php';
 
-// Provera da li je ulogovan admin (snikic01)
+// 1. Prvo provera sesije
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
+
+// 2. TEK SADA definiši varijable iz sesije
+$my_id = $_SESSION['user_id'];
+$my_user = $_SESSION['username'];
+
+// 3. SADA proveri da li je ulogovani korisnik admin
 $is_admin = ($my_user === 'snikic01');
 
-// Logika za objavljivanje vesti (samo ako si admin)
+// 4. Logika za objavljivanje vesti
 if ($is_admin && isset($_POST['post_news'])) {
     $t = trim($_POST['news_title']);
     $c = trim($_POST['news_content']);
@@ -16,15 +26,6 @@ if ($is_admin && isset($_POST['post_news'])) {
         exit();
     }
 }
-
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$my_id = $_SESSION['user_id'];
-$my_user = $_SESSION['username'];
 ?>
 
 <!DOCTYPE html>
