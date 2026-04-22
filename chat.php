@@ -42,10 +42,20 @@ if (isset($_GET['fetch'])) {
 
     foreach ($messages as $m) {
         $class = ($m['sender_id'] == $my_id) ? 'my-msg' : 'friend-msg';
-        echo "<div class='message-wrapper $class'><div class='message'>" . htmlspecialchars($m['message']) . "</div></div>";
+        
+        // 1. Proveravamo da li je tvoja poruka pročitana
+        $seenStatus = "";
+        if ($m['sender_id'] == $my_id && $m['seen'] == 1) {
+            $seenStatus = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 2px; opacity: 0.7;'>Seen ✓</div>";
+        }
+
+        echo "<div class='message-wrapper $class'>";
+        echo "<div class='message'>" . htmlspecialchars($m['message']) . $seenStatus . "</div>";
+        echo "</div>";
     }
     exit();
 }
+
 ?>
 
 <!DOCTYPE html>
