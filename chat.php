@@ -9,6 +9,10 @@ if (!isset($_SESSION['user_id']) || !isset($_GET['user_id'])) {
 
 $my_id = $_SESSION['user_id'];
 $friend_id = (int)$_GET['user_id'];
+// Sve poruke koje je poslao prijatelj MENI, postavi na seen = 1
+$updateSeen = $pdo->prepare("UPDATE private_messages SET seen = 1 WHERE sender_id = ? AND receiver_id = ? AND seen = 0");
+$updateSeen->execute([$friend_id, $my_id]);
+
 
 // Uzmi ime prijatelja za naslov
 $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
