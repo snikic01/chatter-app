@@ -11,6 +11,25 @@ $my_id = $_SESSION['user_id'];
 $my_user = $_SESSION['username'];
 $is_admin = ($my_user === 'snikic01');
 
+// Funkcija za ljudski prikaz vremena (SII standard)
+function time_ago($timestamp) {
+    $time_ago = strtotime($timestamp);
+    $cur_time = time();
+    $time_elapsed = $cur_time - $time_ago;
+    $seconds = $time_elapsed ;
+    $minutes = round($time_elapsed / 60);
+    $hours = round($time_elapsed / 3600);
+    $days = round($time_elapsed / 86400);
+
+    if ($seconds <= 60) return "maločas";
+    else if ($minutes <= 60) return "pre $minutes min";
+    else if ($hours <= 24) return "pre $hours h";
+    else return "pre $days dana";
+}
+
+// Heartbeat: Osveži tvoju aktivnost
+$pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")->execute([$my_id]);
+
 if ($is_admin && isset($_POST['post_news'])) {
     $t = trim($_POST['news_title']);
     $c = trim($_POST['news_content']);
@@ -30,20 +49,16 @@ if ($is_admin && isset($_POST['post_news'])) {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="sidebar">
     <div class="sidebar-header">Chatter Dashboard</div>
-    
     <div class="user-section">
         <small>Prijavljen kao:</small><br>
         <strong><?php echo htmlspecialchars($my_user); ?></strong>
     </div>
 
-    <!-- PRETRAGA (Sada identična formi za grupe) -->
     <div class="search-box" style="padding: 15px 15px 0 15px;">
         <form action="search.php" method="GET" style="display: flex; gap: 5px; align-items: center;">
-            <input type="text" name="q" placeholder="Pronađi prijatelje..." class="modern-input" 
-                   style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;">
+            <input type="text" name="q" placeholder="Pronađi prijatelje..." class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;">
             <button type="submit" class="btn-send" style="width:40px; height:35px; padding:0; display:flex; justify-content:center; align-items:center;">🔍</button>
         </form>
     </div>
@@ -64,30 +79,36 @@ if ($is_admin && isset($_POST['post_news'])) {
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <!-- PRIJATELJI -->
+        <!-- PRIJATELJI SA ONLINE/OFFLINE STATUSOM -->
         <div class="section-title">Prijatelji</div>
         <?php
-        $stmt = $pdo->prepare("SELECT u.username, u.id FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND u.id != ? AND f.status = 'accepted'");
+        $stmt = $pdo->prepare("SELECT u.username, u.id, u.last_seen FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND u.id != ? AND f.status = 'accepted'");
         $stmt->execute([$my_id, $my_id, $my_id]);
         while($f = $stmt->fetch()):
+            $is_online = (strtotime($f['last_seen']) > (time() - 300));
+            $dot_color = $is_online ? 'var(--success)' : 'var(--text-muted)';
+            $status_text = $is_online ? "" : "<small style='font-size:9px; color:var(--text-muted); margin-left:5px;'>" . time_ago($f['last_seen']) . "</small>";
+
             $st_u = $pdo->prepare("SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND receiver_id = ? AND seen = 0");
             $st_u->execute([$f['id'], $my_id]);
             $count = $st_u->fetchColumn();
         ?>
             <a href="chat.php?user_id=<?php echo $f['id']; ?>" class="item-row">
-                <span>● <?php echo htmlspecialchars($f['username']); ?></span>
+                <span>
+                    <span style="color: <?php echo $dot_color; ?>; margin-right: 5px;">●</span>
+                    <?php echo htmlspecialchars($f['username']); ?>
+                    <?php echo $status_text; ?>
+                </span>
                 <?php if($count > 0) echo "<span class='badge'>$count</span>"; ?>
             </a>
         <?php endwhile; ?>
 
-        <!-- GRUPE (Identična struktura kao pretraga) -->
+        <!-- GRUPE -->
         <div class="section-title">Grupe</div>
         <form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px; align-items: center;">
-            <input type="text" name="group_name" class="modern-input" 
-                   style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
+            <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
             <button type="submit" class="btn-send" style="width:40px; height:35px;">+</button>
         </form>
-
         <?php
         $stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
         $stmt_g->execute([$my_id]);
@@ -97,7 +118,6 @@ if ($is_admin && isset($_POST['post_news'])) {
             </a>
         <?php endwhile; ?>
     </div>
-
     <a href="logout.php" class="btn-logout">Odjavi se</a>
 </div>
 
@@ -107,7 +127,6 @@ if ($is_admin && isset($_POST['post_news'])) {
             <h1 style="color: var(--accent); margin: 0;">Zdravo, <?php echo htmlspecialchars($my_user); ?>! 👋</h1>
             <p style="color: var(--text-muted);">Tabla sa vestima i obaveštenjima.</p>
         </div>
-
         <?php if ($is_admin): ?>
             <div class="admin-post-box">
                 <h3 class="section-title" style="margin-top:0; color: var(--accent);">Nova objava</h3>
@@ -118,7 +137,6 @@ if ($is_admin && isset($_POST['post_news'])) {
                 </form>
             </div>
         <?php endif; ?>
-
         <div class="news-feed">
             <?php
             $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
@@ -139,6 +157,5 @@ if ($is_admin && isset($_POST['post_news'])) {
         </div>
     </div>
 </div>
-
 </body>
 </html>
