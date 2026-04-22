@@ -103,8 +103,10 @@ if (isset($_GET['fetch'])) {
     <style>
         .group-container { display: flex; flex: 1; height: 100vh; }
         .members-sidebar { width: 240px; background: var(--sidebar-bg); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; }
-        .member-item { padding: 8px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .member-item span { color: var(--success); margin-right: 8px; }
+        .member-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; }
+        .member-status-row { display: flex; align-items: center; font-size: 14px; }
+        .status-dot { margin-right: 8px; font-size: 10px; }
+        .last-seen-text { font-size: 9px; color: var(--text-muted); padding-left: 18px; margin-top: 2px; }
         select { width: 100%; padding: 8px; background: #111; color: white; border: 1px solid var(--border); border-radius: 5px; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
@@ -133,9 +135,19 @@ if (isset($_GET['fetch'])) {
             <div class="section-title">Članovi grupe</div>
             <div style="flex: 1; overflow-y: auto;">
                 <?php
-                $stmt_m = $pdo->prepare("SELECT u.username FROM users u JOIN group_members gm ON u.id = gm.user_id WHERE gm.group_id = ?");
+                $stmt_m = $pdo->prepare("SELECT u.username, u.last_seen FROM users u JOIN group_members gm ON u.id = gm.user_id WHERE gm.group_id = ?");
                 $stmt_m->execute([$group_id]);
-                while($m = $stmt_m->fetch()) echo "<div class='member-item'><span>●</span>" . htmlspecialchars($m['username']) . "</div>";
+                while($m = $stmt_m->fetch()) {
+                    $m_online = (strtotime($m['last_seen']) > (time() - 300));
+                    $m_color = $m_online ? 'var(--success)' : 'var(--text-muted)';
+                    
+                    echo "<div class='member-item'>";
+                    echo "<div class='member-status-row'><span class='status-dot' style='color: $m_color;'>●</span> " . htmlspecialchars($m['username']) . "</div>";
+                    if (!$m_online) {
+                        echo "<div class='last-seen-text'>" . time_ago($m['last_seen']) . "</div>";
+                    }
+                    echo "</div>";
+                }
                 ?>
             </div>
             <div class="section-title" style="margin-top: 20px;">Dodaj u grupu</div>
