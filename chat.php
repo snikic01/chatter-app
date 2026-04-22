@@ -36,14 +36,21 @@ if (isset($_GET['fetch'])) {
     $messages = $stmt->fetchAll();
 
     foreach ($messages as $m) {
-        $isMe = ($m['sender_id'] == $my_id);
-        $class = $isMe ? 'my-msg' : 'friend-msg';
-        $tick = ($isMe && $m['seen'] == 1) ? "<div class='seen-tick'>Seen ✓</div>" : "";
+    $isMe = ($m['sender_id'] == $my_id);
+    $class = $isMe ? 'my-msg' : 'friend-msg';
+    
+    // Dodajemo d.m.Y ispred vremena
+    $vreme = date("d.m.Y H:i", strtotime($m['created_at']));
+    
+    $statusInfo = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 4px; opacity: 0.6;'>";
+    $statusInfo .= "$vreme " . ($isMe && $m['seen'] == 1 ? "• Seen ✓" : "");
+    $statusInfo .= "</div>";
 
-        echo "<div class='message-wrapper $class'>
-                <div class='message'>" . htmlspecialchars($m['message']) . "$tick</div>
-              </div>";
-    }
+    echo "<div class='message-wrapper $class'>";
+    echo "<div class='message'>" . htmlspecialchars($m['message']) . $statusInfo . "</div>";
+    echo "</div>";
+}
+
     exit();
 }
 ?>

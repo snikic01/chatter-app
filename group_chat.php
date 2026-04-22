@@ -2,43 +2,40 @@
 session_start();
 require_once 'db_chatter.php';
 
-// 1. OSNOVNA PROVERA PRISTUPA
 if (!isset($_SESSION['user_id']) || !isset($_GET['id'])) {
     header("Location: dashboard.php");
     exit();
 }
 
-// 2. DEFINISANJE VARIJABLI
 $my_id = $_SESSION['user_id'];
 $group_id = (int)$_GET['id'];
 
-// 3. PROVERA ČLANSTVA U GRUPI
+// Provera članstva
 $check = $pdo->prepare("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?");
 $check->execute([$group_id, $my_id]);
 if (!$check->fetch()) {
     die("Nisi član ove grupe.");
 }
 
-// 4. MARKIRAJ PORUKE KAO VIĐENE (SEEN LOGIKA)
+// Markiraj poruke kao viđene
 $pdo->prepare("
     INSERT IGNORE INTO group_message_seen (message_id, user_id)
     SELECT id, ? FROM private_messages 
     WHERE group_id = ? AND sender_id != ?
 ")->execute([$my_id, $group_id, $my_id]);
 
-// 5. PODACI O GRUPI
+// Podaci o grupi
 $stmt = $pdo->prepare("SELECT * FROM chat_groups WHERE id = ?");
 $stmt->execute([$group_id]);
 $group = $stmt->fetch();
 
-// 6. LOGIKA ZA DODAVANJE NOVOG ČLANA
+// LOGIKA: Dodavanje člana
 if (isset($_POST['add_member_id'])) {
     $new_m = (int)$_POST['add_member_id'];
-    $pdo->prepare("INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)")
-        ->execute([$group_id, $new_m]);
+    $pdo->prepare("INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)")->execute([$group_id, $new_m]);
 }
 
-// 7. AJAX: SLANJE PORUKE
+// AJAX: Slanje poruke
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['msg'])) {
     $msg = trim($_POST['msg']);
     if (!empty($msg)) {
@@ -48,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['msg'])) {
     exit();
 }
 
-// 8. AJAX: FETCH PORUKA SA SEEN BROJAČEM
+// AJAX: Fetch poruka
 if (isset($_GET['fetch'])) {
     $stmt = $pdo->prepare("
         SELECT pm.*, u.username,
@@ -68,20 +65,30 @@ if (isset($_GET['fetch'])) {
     foreach ($messages as $m) {
         $isMe = ($m['sender_id'] == $my_id);
         $class = $isMe ? 'my-msg' : 'friend-msg';
-        
+        $vreme = date("d.m.Y H:i", strtotime($m['created_at']));
+
         $seenInfo = "";
         if ($isMe && $m['seen_count'] > 0) {
-            $statusText = ($m['seen_count'] >= $total_members) ? "Seen by all ✓" : "Seen by " . $m['seen_count'];
-            $seenInfo = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 2px; opacity: 0.6;'>$statusText</div>";
+            $statusText = ($m['seen_count'] >= $total_members) ? "all ✓" : $m['seen_count'];
+            $seenInfo = " • Seen by $statusText";
         }
 
         echo "<div class='message-wrapper $class'>";
         echo "<div class='message'>";
+        
         if (!$isMe) {
-            echo "<small style='color: var(--accent); display:block; font-weight:bold; margin-bottom:3px;'>" . htmlspecialchars($m['username']) . "</small>";
+            echo "<div style='display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;'>";
+            echo "<small style='color: var(--accent); font-weight: bold;'>" . htmlspecialchars($m['username']) . "</small>";
+            echo "<small style='color: #777; font-size: 8px; margin-left: 10px;'>$vreme</small>";
+            echo "</div>";
         }
+        
         echo htmlspecialchars($m['message']);
-        echo $seenInfo;
+        
+        if ($isMe) {
+            echo "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 4px; opacity: 0.6;'>$vreme $seenInfo</div>";
+        }
+
         echo "</div></div>";
     }
     exit();
@@ -95,43 +102,26 @@ if (isset($_GET['fetch'])) {
     <link rel="stylesheet" href="style.css">
     <style>
         .group-container { display: flex; flex: 1; height: 100vh; }
-        .members-sidebar { 
-            width: 240px; 
-            background: var(--sidebar-bg); 
-            border-left: 1px solid var(--border); 
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
+        .members-sidebar { width: 240px; background: var(--sidebar-bg); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; }
         .member-item { padding: 8px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .member-item span { color: var(--success); margin-right: 8px; }
         select { width: 100%; padding: 8px; background: #111; color: white; border: 1px solid var(--border); border-radius: 5px; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-
     <div class="group-container">
         <div class="chat-area">
             <div class="chat-header">
-    <div>
-        <span style="color: var(--group-gold);">#</span>
-        <strong><?php echo htmlspecialchars($group['name']); ?></strong>
-        
-        <!-- DUGME ZA BRISANJE GRUPE -->
-        <?php if ($group['owner_id'] == $my_id): ?>
-            <a href="delete_group.php?id=<?php echo $group_id; ?>" 
-               onclick="return confirm('Da li si siguran da želiš da obrišeš celu grupu i sve poruke?')" 
-               style="margin-left: 15px; color: var(--danger); font-size: 12px; text-decoration: none; border: 1px solid var(--danger); padding: 2px 5px; border-radius: 3px;">
-               Obriši grupu
-            </a>
-        <?php endif; ?>
-    </div>
-    <a href="dashboard.php" style="color: var(--text-muted); text-decoration: none; font-size: 20px;">&times;</a>
-</div>
-
-
-            <div id="chat-box">Učitavanje grupe...</div>
-
+                <div>
+                    <span style="color: var(--group-gold);">#</span>
+                    <strong><?php echo htmlspecialchars($group['name']); ?></strong>
+                    <?php if ($group['owner_id'] == $my_id): ?>
+                        <a href="delete_group.php?id=<?php echo $group_id; ?>" onclick="return confirm('Obriši grupu?')" style="margin-left: 15px; color: var(--danger); font-size: 11px; text-decoration: none;">[Obriši grupu]</a>
+                    <?php endif; ?>
+                </div>
+                <a href="dashboard.php" style="color: var(--text-muted); text-decoration: none; font-size: 20px;">&times;</a>
+            </div>
+            <div id="chat-box">Učitavanje...</div>
             <div class="input-container">
                 <form id="chat-form">
                     <input type="text" id="msg-input" placeholder="Napiši nešto grupi..." autocomplete="off">
@@ -139,7 +129,6 @@ if (isset($_GET['fetch'])) {
                 </form>
             </div>
         </div>
-
         <div class="members-sidebar">
             <div class="section-title">Članovi grupe</div>
             <div style="flex: 1; overflow-y: auto;">
@@ -149,18 +138,12 @@ if (isset($_GET['fetch'])) {
                 while($m = $stmt_m->fetch()) echo "<div class='member-item'><span>●</span>" . htmlspecialchars($m['username']) . "</div>";
                 ?>
             </div>
-
             <div class="section-title" style="margin-top: 20px;">Dodaj u grupu</div>
             <form method="POST">
                 <select name="add_member_id" onchange="this.form.submit()">
-                    <option value="">Izaberi prijatelja...</option>
+                    <option value="">Izaberi...</option>
                     <?php
-                    $stmt_p = $pdo->prepare("
-                        SELECT u.id, u.username FROM users u 
-                        JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) 
-                        WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ?
-                        AND u.id NOT IN (SELECT user_id FROM group_members WHERE group_id = ?)
-                    ");
+                    $stmt_p = $pdo->prepare("SELECT u.id, u.username FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ? AND u.id NOT IN (SELECT user_id FROM group_members WHERE group_id = ?)");
                     $stmt_p->execute([$my_id, $my_id, $my_id, $group_id]);
                     while($p = $stmt_p->fetch()) echo "<option value='".$p['id']."'>".$p['username']."</option>";
                     ?>
@@ -168,7 +151,6 @@ if (isset($_GET['fetch'])) {
             </form>
         </div>
     </div>
-
     <script>
         const chatBox = document.getElementById('chat-box');
         function fetchMessages() {
