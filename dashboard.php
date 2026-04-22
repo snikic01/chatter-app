@@ -77,6 +77,60 @@ $my_user = $_SESSION['username'];
 
         <div style="padding: 20px; color: #555; font-size: 14px;">
             <div style="padding: 10px;">
+
+            <div style="padding: 20px; color: #555; font-size: 14px;">
+    
+    <!-- NOVI DEO: ZAHTEVI KOJI ČEKAJU -->
+    <div style="padding: 10px; background: #333; margin-bottom: 20px; border-radius: 5px;">
+        <small style="color: #00adb5; font-weight: bold;">ZAHTEVI ZA PRIJATELJSTVO</small>
+        <?php
+        $stmt_req = $pdo->prepare("
+            SELECT u.username, u.id 
+            FROM users u 
+            JOIN friends f ON u.id = f.user_id 
+            WHERE f.friend_id = ? AND f.status = 'pending'
+        ");
+        $stmt_req->execute([$_SESSION['user_id']]);
+        $requests = $stmt_req->fetchAll();
+
+        if (count($requests) > 0) {
+            foreach ($requests as $r) {
+                echo "<div style='margin-top: 10px; color: #eee;'>";
+                echo htmlspecialchars($r['username']);
+                echo " <a href='accept_friend.php?id=" . $r['id'] . "' style='color: #46d160; text-decoration: none; font-weight: bold;'>[Prihvati]</a>";
+                echo "</div>";
+            }
+        } else {
+            echo "<p style='color: #555; font-size: 12px; margin-top: 5px;'>Nema novih zahteva.</p>";
+        }
+        ?>
+    </div>
+
+    <!-- TVOJA POSTOJEĆA LISTA PRIJATELJA -->
+    <div style="padding: 10px;">
+        <small style="color: #777;">MOJI PRIJATELJI</small>
+        <?php
+        // Tvoj SQL upit za 'accepted' prijatelje ostaje ovde...
+        $stmt = $pdo->prepare("
+            SELECT u.username, u.id 
+            FROM users u 
+            JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) 
+            WHERE (f.user_id = ? OR f.friend_id = ?) 
+            AND u.id != ? 
+            AND f.status = 'accepted'
+        ");
+        $stmt->execute([$my_id, $my_id, $my_id]);
+        $friends = $stmt->fetchAll();
+        foreach ($friends as $f) {
+            echo "<div style='padding: 10px 0; border-bottom: 1px solid #333;'>";
+            echo "<a href='chat.php?user_id=" . $f['id'] . "' style='color: white; text-decoration: none;'>● " . htmlspecialchars($f['username']) . "</a>";
+            echo "</div>";
+        }
+        ?>
+    </div>
+</div>
+
+
     <small style="color: #777;">MOJI PRIJATELJI</small>
     <?php
     // Vučemo ljude koji su prihvatili zahtev ili kojima smo mi prihvatili
