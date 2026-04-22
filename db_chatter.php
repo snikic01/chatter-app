@@ -1,9 +1,9 @@
 <?php
 $host = 'localhost';
 $db   = 'chatter_db';
-$user = 'nikic_admin';
-$pass = 'lozinka123';
-$charset = 'utf8mb4';
+$user = 'root';
+$pass = '';
+$charset = 'utf8mb4'; // Proveri da li ovde imas ;
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
@@ -13,4 +13,4 @@ try {
 } catch (PDOException $e) {
     die("Baza nedostupna: " . $e->getMessage());
 }
-?>
+
