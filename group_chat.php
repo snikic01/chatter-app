@@ -113,12 +113,22 @@ if (isset($_GET['fetch'])) {
     <div class="group-container">
         <div class="chat-area">
             <div class="chat-header">
-                <div>
-                    <span style="color: var(--group-gold);">#</span>
-                    <strong><?php echo htmlspecialchars($group['name']); ?></strong>
-                </div>
-                <a href="dashboard.php" style="color: var(--text-muted); text-decoration: none; font-size: 20px;">&times;</a>
-            </div>
+    <div>
+        <span style="color: var(--group-gold);">#</span>
+        <strong><?php echo htmlspecialchars($group['name']); ?></strong>
+        
+        <!-- DUGME ZA BRISANJE GRUPE -->
+        <?php if ($group['owner_id'] == $my_id): ?>
+            <a href="delete_group.php?id=<?php echo $group_id; ?>" 
+               onclick="return confirm('Da li si siguran da želiš da obrišeš celu grupu i sve poruke?')" 
+               style="margin-left: 15px; color: var(--danger); font-size: 12px; text-decoration: none; border: 1px solid var(--danger); padding: 2px 5px; border-radius: 3px;">
+               Obriši grupu
+            </a>
+        <?php endif; ?>
+    </div>
+    <a href="dashboard.php" style="color: var(--text-muted); text-decoration: none; font-size: 20px;">&times;</a>
+</div>
+
 
             <div id="chat-box">Učitavanje grupe...</div>
 
