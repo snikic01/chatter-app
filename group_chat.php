@@ -2,31 +2,43 @@
 session_start();
 require_once 'db_chatter.php';
 
+// 1. OSNOVNA PROVERA PRISTUPA
 if (!isset($_SESSION['user_id']) || !isset($_GET['id'])) {
     header("Location: dashboard.php");
     exit();
 }
 
+// 2. DEFINISANJE VARIJABLI
 $my_id = $_SESSION['user_id'];
 $group_id = (int)$_GET['id'];
 
-// Provera članstva
+// 3. PROVERA ČLANSTVA U GRUPI
 $check = $pdo->prepare("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?");
 $check->execute([$group_id, $my_id]);
-if (!$check->fetch()) die("Nisi član ove grupe.");
+if (!$check->fetch()) {
+    die("Nisi član ove grupe.");
+}
 
-// Podaci o grupi
+// 4. MARKIRAJ PORUKE KAO VIĐENE (SEEN LOGIKA)
+$pdo->prepare("
+    INSERT IGNORE INTO group_message_seen (message_id, user_id)
+    SELECT id, ? FROM private_messages 
+    WHERE group_id = ? AND sender_id != ?
+")->execute([$my_id, $group_id, $my_id]);
+
+// 5. PODACI O GRUPI
 $stmt = $pdo->prepare("SELECT * FROM chat_groups WHERE id = ?");
 $stmt->execute([$group_id]);
 $group = $stmt->fetch();
 
-// LOGIKA: Dodavanje člana
+// 6. LOGIKA ZA DODAVANJE NOVOG ČLANA
 if (isset($_POST['add_member_id'])) {
     $new_m = (int)$_POST['add_member_id'];
-    $pdo->prepare("INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)")->execute([$group_id, $new_m]);
+    $pdo->prepare("INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)")
+        ->execute([$group_id, $new_m]);
 }
 
-// AJAX: Slanje poruke
+// 7. AJAX: SLANJE PORUKE
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['msg'])) {
     $msg = trim($_POST['msg']);
     if (!empty($msg)) {
@@ -36,22 +48,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['msg'])) {
     exit();
 }
 
-// AJAX: Fetch poruka
+// 8. AJAX: FETCH PORUKA SA SEEN BROJAČEM
 if (isset($_GET['fetch'])) {
-    $stmt = $pdo->prepare("SELECT pm.*, u.username FROM private_messages pm JOIN users u ON pm.sender_id = u.id WHERE pm.group_id = ? ORDER BY pm.created_at ASC");
+    $stmt = $pdo->prepare("
+        SELECT pm.*, u.username,
+        (SELECT COUNT(*) FROM group_message_seen gms WHERE gms.message_id = pm.id) as seen_count
+        FROM private_messages pm 
+        JOIN users u ON pm.sender_id = u.id 
+        WHERE pm.group_id = ? 
+        ORDER BY pm.created_at ASC
+    ");
     $stmt->execute([$group_id]);
     $messages = $stmt->fetchAll();
+
+    $stmt_total = $pdo->prepare("SELECT COUNT(*) FROM group_members WHERE group_id = ?");
+    $stmt_total->execute([$group_id]);
+    $total_members = $stmt_total->fetchColumn() - 1;
 
     foreach ($messages as $m) {
         $isMe = ($m['sender_id'] == $my_id);
         $class = $isMe ? 'my-msg' : 'friend-msg';
         
+        $seenInfo = "";
+        if ($isMe && $m['seen_count'] > 0) {
+            $statusText = ($m['seen_count'] >= $total_members) ? "Seen by all ✓" : "Seen by " . $m['seen_count'];
+            $seenInfo = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 2px; opacity: 0.6;'>$statusText</div>";
+        }
+
         echo "<div class='message-wrapper $class'>";
         echo "<div class='message'>";
         if (!$isMe) {
             echo "<small style='color: var(--accent); display:block; font-weight:bold; margin-bottom:3px;'>" . htmlspecialchars($m['username']) . "</small>";
         }
         echo htmlspecialchars($m['message']);
+        echo $seenInfo;
         echo "</div></div>";
     }
     exit();
@@ -81,7 +111,6 @@ if (isset($_GET['fetch'])) {
 <body>
 
     <div class="group-container">
-        <!-- Main Chat Area -->
         <div class="chat-area">
             <div class="chat-header">
                 <div>
@@ -101,7 +130,6 @@ if (isset($_GET['fetch'])) {
             </div>
         </div>
 
-        <!-- Members Sidebar -->
         <div class="members-sidebar">
             <div class="section-title">Članovi grupe</div>
             <div style="flex: 1; overflow-y: auto;">
