@@ -1,241 +1,137 @@
+/* 1. VARIJABLE */
 :root {
-    --bg-dark: #1a1a1a;
-    --sidebar-bg: #252525;
+    --bg-dark: #121212;        /* Nešto tamnija pozadina za bolji kontrast */
+    --sidebar-bg: #1e1e1e;     /* Tamna siva za sidebar */
+    --card-bg: #252525;        /* Svetlija siva za vesti/mehuriće */
     --accent: #00adb5;
     --accent-hover: #008f95;
     --text-main: #eeeeee;
-    --text-muted: #777777;
+    --text-muted: #888888;
     --border: #333333;
     --danger: #ff4d4d;
     --success: #46d160;
     --group-gold: #ffde7d;
 }
 
-/* Osnovni Layout */
+/* 2. OSNOVNI LAYOUT */
 body { 
     background: var(--bg-dark); 
     color: var(--text-main); 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     display: flex; 
     height: 100vh; 
     margin: 0; 
-    overflow: hidden;
+    overflow: hidden; 
 }
 
-/* Sidebar */
+/* 3. SIDEBAR */
 .sidebar { 
     width: 300px; 
     background: var(--sidebar-bg); 
     border-right: 1px solid var(--border); 
     display: flex; 
     flex-direction: column; 
+    flex-shrink: 0;
 }
 
-.sidebar-header { 
-    padding: 20px; 
-    background: var(--accent); 
-    color: white; 
-    font-weight: bold; 
-    font-size: 1.1rem;
-}
+.sidebar-header { padding: 20px; background: var(--accent); color: white; font-weight: bold; font-size: 1.1rem; }
+.user-section { padding: 15px 20px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.1); }
+.scroll-area { flex: 1; overflow-y: auto; padding: 15px; }
 
-.user-section { 
-    padding: 15px 20px; 
-    border-bottom: 1px solid var(--border); 
-    background: rgba(0,0,0,0.2);
-}
-
-.user-section small { color: var(--text-muted); }
-
-/* Liste u Sidebar-u */
-.scroll-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-}
-
-.section-title {
-    font-size: 11px;
-    font-weight: bold;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    margin-top: 20px;
-}
-
-.item-row {
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 2px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background 0.2s;
-    text-decoration: none;
-    color: var(--text-main);
-}
-
-.item-row:hover {
-    background: rgba(255,255,255,0.05);
-}
-
-.item-row.active {
-    background: rgba(0, 173, 181, 0.1);
-    color: var(--accent);
-}
-
-/* Badge za nepročitane */
-.badge {
-    background: var(--danger);
-    color: white;
-    padding: 2px 7px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: bold;
-}
-
-/* Search i Forme */
-.search-box { padding: 15px; }
-.search-box input, .group-form input {
-    width: 100%;
-    padding: 10px;
-    background: #111;
-    border: 1px solid var(--border);
-    color: white;
-    border-radius: 5px;
+/* 4. DASHBOARD TABLA (STRETCH & SCROLL) */
+.main-chat { 
+    flex: 1; 
+    overflow-y: scroll; /* Slajder fiksiran desno */
+    padding: 25px; 
+    height: 100vh; 
     box-sizing: border-box;
 }
 
-.btn-icon {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
+.news-container { width: 100%; margin: 0; }
+
+/* KARTICE VESTI (Mehurici) */
+.news-card {
+    background: var(--card-bg) !important;
+    padding: 30px;
+    border-radius: 15px;
+    border: 1px solid #3d3d3d !important;
+    margin-bottom: 25px;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    display: block;
 }
 
-/* Logout */
-.btn-logout {
-    padding: 20px;
-    color: var(--danger);
-    text-decoration: none;
-    font-size: 13px;
-    text-align: center;
-    border-top: 1px solid var(--border);
+.admin-badge {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    background: var(--accent);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 10px;
     font-weight: bold;
 }
 
-.btn-logout:hover { background: rgba(255, 77, 77, 0.1); }
-
-/* Stilovi za Chat Prozore */
-.chat-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-}
-
-.chat-header {
-    padding: 15px 25px;
-    background: var(--sidebar-bg);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.chat-header .status-dot {
-    color: var(--success);
-    margin-right: 10px;
-}
-
-#chat-box {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: var(--bg-dark);
-}
-
-/* Balončići poruka */
-.message-wrapper {
-    display: flex;
+/* 5. FORME I INPUTI */
+.admin-post-box {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid var(--accent);
+    margin-bottom: 30px;
     width: 100%;
+    box-sizing: border-box;
 }
 
-.message {
-    padding: 10px 16px;
-    border-radius: 18px;
-    max-width: 65%;
-    font-size: 14px;
-    line-height: 1.4;
-    position: relative;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.my-msg { justify-content: flex-end; }
-.my-msg .message {
-    background: var(--accent);
-    color: white;
-    border-bottom-right-radius: 4px;
-}
-
-.friend-msg { justify-content: flex-start; }
-.friend-msg .message {
-    background: var(--sidebar-bg);
-    color: var(--text-main);
-    border-bottom-left-radius: 4px;
-    border: 1px solid var(--border);
-}
-
-.seen-tick {
-    font-size: 10px;
-    text-align: right;
-    margin-top: 4px;
-    opacity: 0.8;
-}
-
-/* Unos poruke */
-.input-container {
-    padding: 20px;
-    background: var(--sidebar-bg);
-    border-top: 1px solid var(--border);
-}
-
-.input-container form {
-    display: flex;
-    gap: 10px;
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.input-container input {
-    flex: 1;
-    padding: 12px 15px;
+.modern-input {
+    width: 100%;
+    padding: 12px;
     background: #111;
     border: 1px solid var(--border);
     color: white;
-    border-radius: 25px;
-    outline: none;
-}
-
-.input-container input:focus {
-    border-color: var(--accent);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+    font-family: inherit;
 }
 
 .btn-send {
+    width: 100%;
+    height: 45px;
     background: var(--accent);
     color: white;
     border: none;
-    padding: 0 20px;
-    border-radius: 25px;
+    border-radius: 6px;
     font-weight: bold;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: 0.2s;
 }
 
 .btn-send:hover { background: var(--accent-hover); }
+
+/* 6. SIDEBAR LISTE */
+.section-title { font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin: 20px 0 10px; letter-spacing: 1px; }
+.item-row { padding: 10px; border-radius: 6px; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text-main); transition: 0.2s; }
+.item-row:hover { background: rgba(255,255,255,0.05); }
+.badge { background: var(--danger); color: white; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+.btn-logout { padding: 20px; color: var(--danger); text-decoration: none; text-align: center; border-top: 1px solid var(--border); font-size: 13px; font-weight: bold; }
+
+/* 7. CHAT PROZORI (1-na-1) */
+.chat-area { flex: 1; display: flex; flex-direction: column; height: 100vh; }
+.chat-header { padding: 15px 25px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+#chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: var(--bg-dark); }
+
+.message-wrapper { display: flex; width: 100%; }
+.message { padding: 10px 16px; border-radius: 18px; max-width: 65%; font-size: 14px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.my-msg { justify-content: flex-end; }
+.my-msg .message { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+.friend-msg { justify-content: flex-start; }
+.friend-msg .message { background: var(--card-bg); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+.seen-tick { font-size: 10px; text-align: right; margin-top: 4px; opacity: 0.8; }
+
+.input-container { padding: 20px; background: var(--sidebar-bg); border-top: 1px solid var(--border); }
+.input-container form { display: flex; gap: 10px; max-width: 900px; margin: 0 auto; }

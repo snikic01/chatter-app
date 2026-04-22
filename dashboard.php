@@ -2,20 +2,16 @@
 session_start();
 require_once 'db_chatter.php';
 
-// 1. Prvo provera sesije
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit();
 }
 
-// 2. TEK SADA definiši varijable iz sesije
 $my_id = $_SESSION['user_id'];
 $my_user = $_SESSION['username'];
-
-// 3. SADA proveri da li je ulogovani korisnik admin
 $is_admin = ($my_user === 'snikic01');
 
-// 4. Logika za objavljivanje vesti
+// Logika za objavljivanje
 if ($is_admin && isset($_POST['post_news'])) {
     $t = trim($_POST['news_title']);
     $c = trim($_POST['news_content']);
@@ -45,20 +41,12 @@ if ($is_admin && isset($_POST['post_news'])) {
         <strong><?php echo htmlspecialchars($my_user); ?></strong>
     </div>
 
-    <div class="search-box">
-        <form action="search.php" method="GET">
-            <input type="text" name="q" placeholder="Pretraži korisnike...">
-        </form>
-    </div>
-
     <div class="scroll-area">
-        
         <!-- ZAHTEVI -->
         <?php
         $stmt_req = $pdo->prepare("SELECT u.username, u.id FROM users u JOIN friends f ON u.id = f.user_id WHERE f.friend_id = ? AND f.status = 'pending'");
         $stmt_req->execute([$my_id]);
         $requests = $stmt_req->fetchAll();
-        
         if (count($requests) > 0): ?>
             <div class="section-title">Zahtevi</div>
             <?php foreach ($requests as $r): ?>
@@ -74,7 +62,7 @@ if ($is_admin && isset($_POST['post_news'])) {
         <?php
         $stmt = $pdo->prepare("SELECT u.username, u.id FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND u.id != ? AND f.status = 'accepted'");
         $stmt->execute([$my_id, $my_id, $my_id]);
-        while($f = $stmt->fetch()): 
+        while($f = $stmt->fetch()):
             $st_u = $pdo->prepare("SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND receiver_id = ? AND seen = 0");
             $st_u->execute([$f['id'], $my_id]);
             $count = $st_u->fetchColumn();
@@ -87,11 +75,10 @@ if ($is_admin && isset($_POST['post_news'])) {
 
         <!-- GRUPE -->
         <div class="section-title">Grupe</div>
-        <form action="create_group.php" method="POST" class="group-form" style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <input type="text" name="group_name" placeholder="Nova grupa..." required>
-            <button type="submit" class="btn-icon">+</button>
+        <form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px;" placeholder="Nova grupa..." required>
+            <button type="submit" class="btn-send" style="width:40px; height:35px;">+</button>
         </form>
-        
         <?php
         $stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
         $stmt_g->execute([$my_id]);
@@ -100,51 +87,50 @@ if ($is_admin && isset($_POST['post_news'])) {
                 # <?php echo htmlspecialchars($g['name']); ?>
             </a>
         <?php endwhile; ?>
-
     </div>
 
     <a href="logout.php" class="btn-logout">Odjavi se</a>
 </div>
 
 <div class="main-chat">
-    <div class="main-chat" style="justify-content: flex-start; overflow-y: auto; padding: 40px;">
-    <div style="max-width: 700px; width: 100%;">
-        <h1 style="color: var(--accent); margin-bottom: 5px;">Zdravo, <?php echo htmlspecialchars($my_user); ?>! 👋</h1>
-        <p style="color: var(--text-muted); margin-bottom: 30px;">Dobrodošli na Chatter Global Board.</p>
+    <div class="news-container">
+        <div style="margin-bottom: 25px;">
+            <h1 style="color: var(--accent); margin: 0;">Zdravo, <?php echo htmlspecialchars($my_user); ?>! 👋</h1>
+            <p style="color: var(--text-muted);">Tabla sa vestima i obaveštenjima.</p>
+        </div>
 
-        <!-- FORMA ZA ADMINA -->
         <?php if ($is_admin): ?>
-            <div style="background: var(--sidebar-bg); padding: 20px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 40px;">
-                <h3 style="margin-top: 0; color: var(--accent);">Nova objava</h3>
+            <div class="admin-post-box">
+                <h3 class="section-title" style="margin-top:0; color: var(--accent);">Nova objava</h3>
                 <form method="POST">
-                    <input type="text" name="news_title" placeholder="Naslov vesti..." required 
-                           style="width: 100%; padding: 10px; background: #111; border: 1px solid var(--border); color: white; border-radius: 5px; margin-bottom: 10px;">
-                    <textarea name="news_content" placeholder="Šta ti je na umu?" required 
-                              style="width: 100%; padding: 10px; background: #111; border: 1px solid var(--border); color: white; border-radius: 5px; height: 100px; font-family: inherit;"></textarea>
-                    <button type="submit" name="post_news" class="btn-send" style="margin-top: 10px; width: 100%; height: 40px;">Objavi na zid</button>
+                    <input type="text" name="news_title" class="modern-input" placeholder="Naslov vesti..." required>
+                    <textarea name="news_content" class="modern-input" style="height:100px; resize:vertical;" placeholder="Sadržaj vesti..." required></textarea>
+                    <button type="submit" name="post_news" class="btn-send">Objavi na zid</button>
                 </form>
             </div>
         <?php endif; ?>
 
-        <!-- PRIKAZ VESTI (VIDE SVI) -->
-        <div class="news-feed">
-            <?php
-            $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
-            foreach ($news as $n): ?>
-                <div style="background: var(--sidebar-bg); padding: 20px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px;">
-                    <small style="color: var(--accent); font-weight: bold;">ADMIN POST • <?php echo date("d.m.Y H:i", strtotime($n['created_at'])); ?></small>
-                    <h2 style="margin: 10px 0; color: var(--text-main);"><?php echo htmlspecialchars($n['title']); ?></h2>
-                    <p style="color: #ccc; line-height: 1.6; white-space: pre-wrap;"><?php echo htmlspecialchars($n['content']); ?></p>
-                </div>
-            <?php endforeach; ?>
-            
-            <?php if (empty($news)): ?>
-                <p style="text-align: center; color: var(--text-muted);">Trenutno nema novih vesti na tabli.</p>
-            <?php endif; ?>
+        <!-- NEWS FEED (Ovaj deo treba da bude unutar news-container diva) -->
+<div class="news-feed">
+    <?php
+    $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
+    foreach ($news as $n): ?>
+        <!-- KLJUČNA LINIJA: Ovde mora biti klasa news-card -->
+        <div class="news-card">
+            <span class="admin-badge">ADMIN</span>
+            <div style="margin-bottom: 10px;">
+                <small style="color: var(--accent); font-weight: bold; text-transform: uppercase; font-size: 10px;">
+                    Snikic • <?php echo date("H:i | d.m.Y", strtotime($n['created_at'])); ?>
+                </small>
+            </div>
+            <h2 style="margin: 0 0 10px 0; color: #fff; font-size: 1.6rem; line-height: 1.2;">
+                <?php echo htmlspecialchars($n['title']); ?>
+            </h2>
+            <div style="color: #bbb; line-height: 1.6; font-size: 15px; white-space: pre-wrap;"><?php echo htmlspecialchars($n['content']); ?></div>
         </div>
-    </div>
+    <?php endforeach; ?>
 </div>
-
+    </div>
 </div>
 
 </body>
