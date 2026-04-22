@@ -13,4 +13,9 @@ try {
 } catch (PDOException $e) {
     die("Baza nedostupna: " . $e->getMessage());
 }
+if (isset($_SESSION['user_id'])) {
+    $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")
+        ->execute([$_SESSION['user_id']]);
+}
+
 
