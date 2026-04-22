@@ -14,10 +14,15 @@ $friend_id = (int)$_GET['user_id'];
 $pdo->prepare("UPDATE private_messages SET seen = 1 WHERE sender_id = ? AND receiver_id = ? AND seen = 0")
     ->execute([$friend_id, $my_id]);
 
-// Podaci o prijatelju
-$stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+// Podaci o prijatelju + Last Seen status
+$stmt = $pdo->prepare("SELECT username, last_seen FROM users WHERE id = ?");
 $stmt->execute([$friend_id]);
 $friend = $stmt->fetch();
+
+// Provera online statusa (5 min limit)
+$is_online = (strtotime($friend['last_seen']) > (time() - 300));
+$status_color = $is_online ? 'var(--success)' : 'var(--text-muted)';
+$status_label = $is_online ? 'Online' : 'Aktivan ' . time_ago($friend['last_seen']);
 
 // AJAX: Slanje poruke
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['msg'])) {
@@ -36,21 +41,18 @@ if (isset($_GET['fetch'])) {
     $messages = $stmt->fetchAll();
 
     foreach ($messages as $m) {
-    $isMe = ($m['sender_id'] == $my_id);
-    $class = $isMe ? 'my-msg' : 'friend-msg';
-    
-    // Dodajemo d.m.Y ispred vremena
-    $vreme = date("d.m.Y H:i", strtotime($m['created_at']));
-    
-    $statusInfo = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 4px; opacity: 0.6;'>";
-    $statusInfo .= "$vreme " . ($isMe && $m['seen'] == 1 ? "• Seen ✓" : "");
-    $statusInfo .= "</div>";
+        $isMe = ($m['sender_id'] == $my_id);
+        $class = $isMe ? 'my-msg' : 'friend-msg';
+        $vreme = date("d.m.Y H:i", strtotime($m['created_at']));
+        
+        $statusInfo = "<div style='font-size: 9px; color: #eee; text-align: right; margin-top: 4px; opacity: 0.6;'>";
+        $statusInfo .= "$vreme " . ($isMe && $m['seen'] == 1 ? "• Seen ✓" : "");
+        $statusInfo .= "</div>";
 
-    echo "<div class='message-wrapper $class'>";
-    echo "<div class='message'>" . htmlspecialchars($m['message']) . $statusInfo . "</div>";
-    echo "</div>";
-}
-
+        echo "<div class='message-wrapper $class'>";
+        echo "<div class='message'>" . htmlspecialchars($m['message']) . $statusInfo . "</div>";
+        echo "</div>";
+    }
     exit();
 }
 ?>
@@ -66,8 +68,11 @@ if (isset($_GET['fetch'])) {
     <div class="chat-area">
         <div class="chat-header">
             <div>
-                <span class="status-dot">●</span>
+                <span style="color: <?php echo $status_color; ?>; margin-right: 8px;">●</span>
                 <strong><?php echo htmlspecialchars($friend['username']); ?></strong>
+                <span style="font-size: 11px; color: var(--text-muted); margin-left: 10px;">
+                    <?php echo $status_label; ?>
+                </span>
             </div>
             <a href="dashboard.php" style="color: var(--text-muted); text-decoration: none; font-size: 20px;">&times;</a>
         </div>

@@ -12,20 +12,20 @@ $my_user = $_SESSION['username'];
 $is_admin = ($my_user === 'snikic01');
 
 // Funkcija za ljudski prikaz vremena (SII standard)
-function time_ago($timestamp) {
-    $time_ago = strtotime($timestamp);
-    $cur_time = time();
-    $time_elapsed = $cur_time - $time_ago;
-    $seconds = $time_elapsed ;
-    $minutes = round($time_elapsed / 60);
-    $hours = round($time_elapsed / 3600);
-    $days = round($time_elapsed / 86400);
+///function time_ago($timestamp) {
+ //   $time_ago = strtotime($timestamp);
+ //   $cur_time = time();
+//    $time_elapsed = $cur_time - $time_ago;
+//    $seconds = $time_elapsed ;
+//    $minutes = round($time_elapsed / 60);
+//    $hours = round($time_elapsed / 3600);
+ //   $days = round($time_elapsed / 86400);
 
-    if ($seconds <= 60) return "maločas";
-    else if ($minutes <= 60) return "pre $minutes min";
-    else if ($hours <= 24) return "pre $hours h";
-    else return "pre $days dana";
-}
+ //   if ($seconds <= 60) return "maločas";
+//    else if ($minutes <= 60) return "pre $minutes min";
+//    else if ($hours <= 24) return "pre $hours h";
+//    else return "pre $days dana";
+//}
 
 // Heartbeat: Osveži tvoju aktivnost
 $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")->execute([$my_id]);

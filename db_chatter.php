@@ -17,5 +17,19 @@ if (isset($_SESSION['user_id'])) {
     $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")
         ->execute([$_SESSION['user_id']]);
 }
+function time_ago($timestamp) {
+    $time_ago = strtotime($timestamp);
+    $cur_time = time();
+    $time_elapsed = $cur_time - $time_ago;
+    
+    if ($time_elapsed <= 60) return "maločas";
+    $minutes = round($time_elapsed / 60);
+    if ($minutes <= 60) return "pre $minutes min";
+    $hours = round($time_elapsed / 3600);
+    if ($hours <= 24) return "pre $hours h";
+    $days = round($time_elapsed / 86400);
+    return "pre $days dana";
+}
+
 
 
