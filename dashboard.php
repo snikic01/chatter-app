@@ -141,6 +141,32 @@ $my_user = $_SESSION['username'];
 }
 
         ?>
+
+        <!-- OVDE UBACUJEMO GRUPE -->
+        <div style="padding: 10px; border-top: 1px solid #333; margin-top: 10px;">
+            <small style="color: #777;">MOJE GRUPE</small>
+            
+            <form action="create_group.php" method="POST" style="margin: 10px 0; display: flex; gap: 5px;">
+                <input type="text" name="group_name" placeholder="Nova grupa..." required 
+                       style="flex: 1; padding: 5px; background: #333; color: white; border: 1px solid #444; font-size: 12px;">
+                <button type="submit" style="background: #00adb5; color: white; border: none; padding: 5px; cursor: pointer;">+</button>
+            </form>
+
+            <?php
+            $stmt_groups = $pdo->prepare("
+                SELECT g.* FROM chat_groups g 
+                JOIN group_members gm ON g.id = gm.group_id 
+                WHERE gm.user_id = ?
+            ");
+            $stmt_groups->execute([$my_id]);
+            while($group = $stmt_groups->fetch()) {
+                echo "<div style='padding: 5px 0;'>";
+                echo "<a href='group_chat.php?id=" . $group['id'] . "' style='color: #ffde7d; text-decoration: none;'># " . htmlspecialchars($group['name']) . "</a>";
+                echo "</div>";
+            }
+            ?>
+        </div>
+    </div> <!-- Kraj glavnog padding diva -->
     </div>
 </div>
 
