@@ -76,7 +76,29 @@ $my_user = $_SESSION['username'];
         </div>
 
         <div style="padding: 20px; color: #555; font-size: 14px;">
-            <p>Grupe i prijatelji će se pojaviti ovde...</p>
+            <div style="padding: 10px;">
+    <small style="color: #777;">MOJI PRIJATELJI</small>
+    <?php
+    // Vučemo ljude koji su prihvatili zahtev ili kojima smo mi prihvatili
+    $stmt = $pdo->prepare("
+        SELECT u.username, u.id 
+        FROM users u 
+        JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) 
+        WHERE (f.user_id = ? OR f.friend_id = ?) 
+        AND u.id != ? 
+        AND f.status = 'accepted'
+    ");
+    $stmt->execute([$my_id, $my_id, $my_id]);
+    $friends = $stmt->fetchAll();
+
+    foreach ($friends as $f) {
+        echo "<div style='padding: 10px 0; border-bottom: 1px solid #333;'>";
+        echo "<a href='chat.php?user_id=" . $f['id'] . "' style='color: white; text-decoration: none;'>● " . htmlspecialchars($f['username']) . "</a>";
+        echo "</div>";
+    }
+    ?>
+</div>
+
         </div>
 
         <a href="logout.php" class="btn-logout">Odjavi se</a>
