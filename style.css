@@ -341,3 +341,34 @@ body {
     background: var(--danger);
     color: white;
 }
+
+/* --- MOBILNA OPTIMIZACIJA ZA PRIVATNI ČET --- */
+@media screen and (max-width: 800px) {
+    /* Ako stranica sadrži .chat-area, sakrij Dashboard sidebar */
+    body:has(.chat-area) .sidebar {
+        display: none !important;
+    }
+
+    /* Čet prostor se širi preko celog ekrana */
+    .chat-area {
+        width: 100vw !important;
+        height: 100vh !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Poruke dobijaju više mesta da ne budu uske */
+    .message {
+        max-width: 85% !important;
+    }
+
+    /* Polje za kucanje na dnu - puna širina */
+    .chat-area .input-container {
+        padding: 15px !important;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+}
