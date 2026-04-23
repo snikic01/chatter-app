@@ -257,3 +257,60 @@ body {
 
 .btn-edit { background: #555; color: white; }
 .btn-delete { background: var(--danger); color: white; }
+
+/* Lajkovi i Komentari Sekcija */
+.news-footer {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.interaction-bar { display: flex; gap: 20px; align-items: center; }
+
+.btn-like {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 5px;
+}
+.btn-like.active { color: var(--accent); font-weight: bold; }
+
+.comments-section {
+    background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px;
+}
+
+.comment-item {
+    font-size: 13px; margin-bottom: 10px; padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.comment-user { color: var(--accent); font-weight: bold; margin-right: 8px; }
+.comment-text { color: #ccc; }
+
+.comment-input-group { display: flex; gap: 10px; margin-top: 10px; }
+.comment-input-group input { 
+    flex: 1; background: #111; border: 1px solid var(--border); 
+    color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px;
+}
+
+.btn-discard {
+    background: #444;
+    color: white;
+    padding: 0 20px;
+    height: 48px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 13px;
+    transition: 0.2s;
+    min-width: 100px;
+}
+
+.btn-discard:hover {
+    background: #555;
+    transform: scale(1.02);
+}
