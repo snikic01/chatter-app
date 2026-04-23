@@ -135,3 +135,72 @@ body {
     white-space: nowrap;
 }
 .btn-send:hover { background: var(--accent-hover); }
+
+/* 9. ADMIN LOGS TABELA */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.admin-table th {
+    text-align: left;
+    padding: 15px;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.admin-table td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+}
+
+.ip-badge {
+    background: #111;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--group-gold);
+    font-family: monospace;
+}
+
+.header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.btn-danger-small {
+    background: var(--danger);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 25px; /* Uklapa se sa tvojim btn-send */
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 11px;
+    transition: 0.2s;
+}
+
+.btn-danger-small:hover {
+    filter: brightness(1.2);
+}
+
+/* Statusi za korisnike */
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.status-active { background: var(--success); color: black; }
+.status-banned { background: var(--danger); color: white; }
+
+/* Razmak između sekcija u admin panelu */
+.admin-section { margin-top: 50px; }
