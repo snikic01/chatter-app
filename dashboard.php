@@ -34,6 +34,10 @@ if ($is_admin && isset($_POST['post_news'])) {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <!-- Audio element za zvuk (potreban ti je notification.mp3 u folderu) -->
+    <audio id="notif-sound" src="notification.mp3" preload="auto"></audio>
+
     <div class="sidebar">
         <div class="sidebar-header">Chatter Dashboard</div>
         <div class="user-section">
@@ -52,12 +56,10 @@ if ($is_admin && isset($_POST['post_news'])) {
         </div>
 
         <div class="scroll-area">
-            <!-- OVDE SE SADA DINAMIČKI UCITAVAJU PRIJATELJI I GRUPE -->
             <div id="dynamic-sidebar-content">
                 Učitavanje liste...
             </div>
         </div>
-        
         <a href="logout.php" class="btn-logout">Odjavi se</a>
     </div>
 
@@ -80,8 +82,7 @@ if ($is_admin && isset($_POST['post_news'])) {
             <?php endif; ?>
 
             <div class="news-feed">
-                <?php 
-                $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
+                <?php $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
                 foreach ($news as $n): ?>
                     <div class="news-card">
                         <span class="admin-badge">ADMIN</span>
@@ -100,21 +101,33 @@ if ($is_admin && isset($_POST['post_news'])) {
         </div>
     </div>
 
-    <!-- SKRIPTA ZA OSVEŽAVANJE SIDEBAR-A -->
     <script>
+    let lastTotalUnread = 0;
+
     function refreshSidebar() {
         fetch('fetch_sidebar.php')
             .then(response => response.text())
             .then(data => {
                 document.getElementById('dynamic-sidebar-content').innerHTML = data;
+
+                // Izvlačenje broja poruka iz skrivenog polja u fetch_sidebar.php
+                const countEl = document.getElementById('total-unread-count');
+                if (countEl) {
+                    let currentCount = parseInt(countEl.innerText);
+                    // Ako je stigla bar jedna nova poruka, pusti zvuk
+                    if (currentCount > lastTotalUnread) {
+                        document.getElementById('notif-sound').play().catch(e => {
+                            // Brauzeri blokiraju zvuk dok korisnik prvi put ne klikne na stranu
+                            console.log("Audio play blocked until user interaction.");
+                        });
+                    }
+                    lastTotalUnread = currentCount;
+                }
             })
-            .catch(err => console.error('Greška pri osvežavanju:', err));
+            .catch(err => console.error('Greška:', err));
     }
 
-    // Osvežavaj svakih 5 sekundi
     setInterval(refreshSidebar, 5000);
-
-    // Prvo učitavanje odmah
     refreshSidebar();
     </script>
 </body>
