@@ -104,37 +104,68 @@ if (isset($_GET['fetch'])) {
         
         <!-- LEVI SIDEBAR ČLANOVA -->
         <div class="members-sidebar" id="members-sidebar">
-            <div class="sidebar-header-fixed">
-                <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted);">Članovi grupe</div>
+    <div class="sidebar-header-fixed">
+        <div class="section-title" style="margin:0;">Članovi grupe</div>
+    </div>
+
+    <div class="sidebar-content-scrollable">
+        <?php 
+        $stmt_m = $pdo->prepare("SELECT u.id, u.username, u.last_seen FROM users u JOIN group_members gm ON u.id = gm.user_id WHERE gm.group_id = ?");
+        $stmt_m->execute([$group_id]);
+        while($m = $stmt_m->fetch()) {
+            $m_online = (strtotime($m['last_seen']) > (time() - 300));
+            $m_color = $m_online ? 'var(--success)' : 'var(--text-muted)';
+            $is_owner = ($m['id'] == $group['owner_id']);
+            
+            echo "<div class='member-item'>";
+            echo "<div class='member-status-row'>
+                    <span class='status-dot' style='color:$m_color;'>●</span> " 
+                    . htmlspecialchars($m['username']) . 
+                    ($is_owner ? " <small style='color:var(--group-gold); font-size:9px;'>[VLASNIK]</small>" : "") . 
+                  "</div>";
+            echo "</div>";
+        }
+        ?>
+    </div>
+
+    <!-- FIKSIRANI DONJI DEO SA AKCIJAMA -->
+    <div class="sidebar-footer-fixed">
+        <?php if (!$is_ghost): ?>
+            <!-- Dodavanje članova -->
+            <div class="section-title" style="margin-top:0; margin-bottom:10px;">Dodaj u grupu</div>
+            <form method="POST" style="margin-bottom:15px;">
+                <select name="add_member_id" onchange="this.form.submit()" class="modern-input" style="margin:0; cursor:pointer; font-size:12px;">
+                    <option value="">Izaberi...</option>
+                    <?php 
+                    $stmt_p = $pdo->prepare("SELECT u.id, u.username FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ? AND u.id NOT IN (SELECT user_id FROM group_members WHERE group_id = ?)");
+                    $stmt_p->execute([$my_id, $my_id, $my_id, $group_id]);
+                    while($p = $stmt_p->fetch()) echo "<option value='".$p['id']."'>".$p['username']."</option>";
+                    ?>
+                </select>
+            </form>
+
+            <!-- Akcije za grupu -->
+            <div class="sidebar-footer-actions">
+                <?php if ($group['owner_id'] == $my_id): ?>
+                    <!-- Vlasnik vidi brisanje -->
+                    <a href="delete_group.php?id=<?= $group_id ?>" 
+                       class="btn-danger-outline" 
+                       onclick="return confirm('DA LI STE SIGURNI? Sve poruke iz ove grupe će biti trajno obrisane!')">
+                       🗑️ Obriši grupu
+                    </a>
+                <?php else: ?>
+                    <!-- Običan član vidi napuštanje -->
+                    <a href="leave_group.php?id=<?= $group_id ?>" 
+                       class="btn-danger-outline" 
+                       onclick="return confirm('Napustiti grupu?')">
+                       🚪 Napusti grupu
+                    </a>
+                <?php endif; ?>
             </div>
-            <div class="sidebar-content-scrollable">
-                <?php 
-                $stmt_m = $pdo->prepare("SELECT u.username, u.last_seen FROM users u JOIN group_members gm ON u.id = gm.user_id WHERE gm.group_id = ?");
-                $stmt_m->execute([$group_id]);
-                while($m = $stmt_m->fetch()) {
-                    $m_online = (strtotime($m['last_seen']) > (time() - 300));
-                    $m_color = $m_online ? 'var(--success)' : 'var(--text-muted)';
-                    echo "<div style='padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:14px;'>
-                            <span style='color:$m_color;'>●</span> " . htmlspecialchars($m['username']) . "
-                          </div>";
-                }
-                ?>
-            </div>
-            <?php if (!$is_ghost): ?>
-            <div class="sidebar-footer-fixed">
-                <form method="POST">
-                    <select name="add_member_id" onchange="this.form.submit()" class="modern-input" style="margin:0; cursor:pointer;">
-                        <option value="">+ Dodaj člana...</option>
-                        <?php 
-                        $stmt_p = $pdo->prepare("SELECT u.id, u.username FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ? AND u.id NOT IN (SELECT user_id FROM group_members WHERE group_id = ?)");
-                        $stmt_p->execute([$my_id, $my_id, $my_id, $group_id]);
-                        while($p = $stmt_p->fetch()) echo "<option value='".$p['id']."'>".$p['username']."</option>";
-                        ?>
-                    </select>
-                </form>
-            </div>
-            <?php endif; ?>
-        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 
         <!-- DESNI DEO ZA PORUKE -->
         <div class="chat-area">
