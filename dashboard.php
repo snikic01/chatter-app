@@ -52,76 +52,14 @@ if ($is_admin && isset($_POST['post_news'])) {
         </div>
 
         <div class="scroll-area">
-            <!-- ZAHTEVI -->
-            <?php 
-            $stmt_req = $pdo->prepare("SELECT u.username, u.id FROM users u JOIN friends f ON u.id = f.user_id WHERE f.friend_id = ? AND f.status = 'pending'");
-            $stmt_req->execute([$my_id]);
-            $requests = $stmt_req->fetchAll();
-            if (count($requests) > 0): ?>
-                <div class="section-title">Zahtevi</div>
-                <?php foreach ($requests as $r): ?>
-                    <div class="item-row" style="background: rgba(70, 209, 96, 0.1);">
-                        <span><?php echo htmlspecialchars($r['username']); ?></span>
-                        <a href="accept_friend.php?id=<?php echo $r['id']; ?>" style="color: var(--success); font-weight: bold; text-decoration: none;">[✓]</a>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-
-            <!-- PRIJATELJI -->
-            <div class="section-title">Prijatelji</div>
-            <?php 
-            $stmt = $pdo->prepare("SELECT u.username, u.id, u.last_seen FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND u.id != ? AND f.status = 'accepted'");
-            $stmt->execute([$my_id, $my_id, $my_id]);
-            while($f = $stmt->fetch()): 
-                $is_online = (strtotime($f['last_seen']) > (time() - 300));
-                $dot_color = $is_online ? 'var(--success)' : 'var(--text-muted)';
-                $status_text = $is_online ? "" : "<small style='font-size:9px; color:var(--text-muted); margin-left:5px;'>" . time_ago($f['last_seen']) . "</small>";
-                
-                $st_u = $pdo->prepare("SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND receiver_id = ? AND seen = 0 AND group_id IS NULL");
-                $st_u->execute([$f['id'], $my_id]);
-                $count = $st_u->fetchColumn();
-            ?>
-                <a href="chat.php?user_id=<?php echo $f['id']; ?>" class="item-row">
-                    <span>
-                        <span style="color: <?php echo $dot_color; ?>; margin-right: 5px;">●</span>
-                        <?php echo htmlspecialchars($f['username']); ?> <?php echo $status_text; ?>
-                    </span>
-                    <?php if($count > 0) echo "<span class='badge'>$count</span>"; ?>
-                </a>
-            <?php endwhile; ?>
-
-            <!-- GRUPE -->
-            <div class="section-title">Grupe</div>
-            <form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px; align-items: center;">
-                <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
-                <button type="submit" class="btn-send" style="width:40px; height:35px;">+</button>
-            </form>
-
-            <?php 
-            $stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
-            $stmt_g->execute([$my_id]);
-            while($g = $stmt_g->fetch()): 
-                // Brojanje nepročitanih poruka u grupi
-                $st_ug = $pdo->prepare("
-                    SELECT COUNT(*) 
-                    FROM private_messages pm 
-                    WHERE pm.group_id = ? AND pm.sender_id != ? 
-                    AND pm.id NOT IN (SELECT message_id FROM group_message_seen WHERE user_id = ?)
-                ");
-                $st_ug->execute([$g['id'], $my_id, $my_id]);
-                $g_unread = $st_ug->fetchColumn();
-            ?>
-                <a href="group_chat.php?id=<?php echo $g['id']; ?>" class="item-row" style="color: var(--group-gold);">
-                    <span>
-                        <span style="color: var(--group-gold); margin-right: 5px;">#</span> 
-                        <?php echo htmlspecialchars($g['name']); ?>
-                    </span>
-                    <?php if($g_unread > 0) echo "<span class='badge' style='background: var(--group-gold); color: black;'>$g_unread</span>"; ?>
-                </a>
-            <?php endwhile; ?> <!-- OVE LINIJE JE FALILO -->
+            <!-- OVDE SE SADA DINAMIČKI UCITAVAJU PRIJATELJI I GRUPE -->
+            <div id="dynamic-sidebar-content">
+                Učitavanje liste...
+            </div>
         </div>
+        
         <a href="logout.php" class="btn-logout">Odjavi se</a>
-    </div> <!-- KRAJ SIDEBAR-A -->
+    </div>
 
     <div class="main-chat">
         <div class="news-container">
@@ -161,5 +99,23 @@ if ($is_admin && isset($_POST['post_news'])) {
             </div>
         </div>
     </div>
+
+    <!-- SKRIPTA ZA OSVEŽAVANJE SIDEBAR-A -->
+    <script>
+    function refreshSidebar() {
+        fetch('fetch_sidebar.php')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('dynamic-sidebar-content').innerHTML = data;
+            })
+            .catch(err => console.error('Greška pri osvežavanju:', err));
+    }
+
+    // Osvežavaj svakih 5 sekundi
+    setInterval(refreshSidebar, 5000);
+
+    // Prvo učitavanje odmah
+    refreshSidebar();
+    </script>
 </body>
 </html>
