@@ -2,6 +2,15 @@
 session_start();
 require_once 'db_chatter.php';
 
+// --- GLOBALNA IP PROVERA ---
+$current_visitor_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'];
+$checkIp = $pdo->prepare("SELECT id FROM banned_ips WHERE ip_address = ?");
+$checkIp->execute([$current_visitor_ip]);
+
+if ($checkIp->fetch()) {
+    die("<h1 style='color:red; text-align:center; margin-top:50px;'>VAŠA IP ADRESA ($current_visitor_ip) JE BLOKIRANA.</h1>");
+}
+
 $error = "";
 $success = "";
 
