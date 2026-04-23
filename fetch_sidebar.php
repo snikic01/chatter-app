@@ -39,3 +39,14 @@ while($g = $stmt_g->fetch()) {
     echo "</a>";
 }
 ?>
+
+<?php
+// Izračunaj ukupni zbir svih nepročitanih (privatne + grupne)
+$total_unread = 0;
+
+// (Ovde iskoristi rezultate upita koje već imaš u fetch_sidebar.php)
+// Recimo da sabereš sve $count i $g_unread
+$total_unread = $ukupno_privatnih + $ukupno_grupnih; 
+
+echo "<div id='unread-count-data' style='display:none;'>$total_unread</div>";
+?>
