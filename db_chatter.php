@@ -31,5 +31,28 @@ function time_ago($timestamp) {
     return "pre $days dana";
 }
 
+// Ako je korisnik ulogovan, proveri da li je u međuvremenu banovan
+if (isset($_SESSION['user_id']) && $_SESSION['username'] !== 'snikic01') {
+    $my_id = $_SESSION['user_id'];
+    $my_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'];
+
+    // 1. Provera USER bana
+    $stmt = $pdo->prepare("SELECT is_banned FROM users WHERE id = ?");
+    $stmt->execute([$my_id]);
+    $user_status = $stmt->fetchColumn();
+
+    // 2. Provera IP bana
+    $checkIp = $pdo->prepare("SELECT id FROM banned_ips WHERE ip_address = ?");
+    $checkIp->execute([$my_ip]);
+    $ip_is_banned = $checkIp->fetch();
+
+    // Ako je bilo šta od ovoga istina, uništi sesiju i izbaci ga
+    if ($user_status == 1 || $ip_is_banned) {
+        session_unset();
+        session_destroy();
+        header("Location: index.php?error=banned");
+        exit();
+    }
+}
 
 
