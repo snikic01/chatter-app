@@ -36,7 +36,7 @@ if ($is_admin && isset($_POST['post_news'])) {
 <body>
 
     <!-- Audio element za zvuk (potreban ti je notification.mp3 u folderu) -->
-    <audio id="notif-sound" src="notification.mp3" preload="auto"></audio>
+    <audio id="notif-sound" src="MsgSound.mp3" preload="auto"></audio>
 
     <div class="sidebar">
         <div class="sidebar-header">Chatter Dashboard</div>
