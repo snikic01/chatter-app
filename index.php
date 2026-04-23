@@ -12,7 +12,8 @@ if ($checkIp->fetch()) {
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Access Denied</title>
+        <meta charset='UTF-8'>
+        <title>Pristup Odbijen</title>
         <style>
             body { 
                 background: #0f0f0f; 
@@ -30,36 +31,57 @@ if ($checkIp->fetch()) {
                 border-radius: 15px;
                 border: 1px solid #ff4d4d;
                 text-align: center;
-                box-shadow: 0 10px 30px rgba(255, 77, 77, 0.2);
-                max-width: 500px;
+                box-shadow: 0 10px 30px rgba(255, 77, 77, 0.15);
+                max-width: 450px;
+                width: 90%;
             }
-            h1 { color: #ff4d4d; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
-            p { color: #888; line-height: 1.6; }
+            h1 { color: #ff4d4d; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 2px; font-size: 24px; }
+            p { color: #888; line-height: 1.6; margin-bottom: 20px; }
             .ip-display {
                 display: inline-block;
-                margin-top: 15px;
+                margin-bottom: 25px;
                 padding: 10px 20px;
-                background: rgba(255, 77, 77, 0.1);
+                background: rgba(255, 77, 77, 0.05);
                 color: #ff4d4d;
-                border-radius: 5px;
-                font-family: monospace;
+                border-radius: 6px;
+                font-family: 'Consolas', monospace;
                 font-weight: bold;
-                border: 1px solid rgba(255, 77, 77, 0.3);
+                border: 1px solid rgba(255, 77, 77, 0.2);
             }
-            .footer { margin-top: 25px; font-size: 12px; color: #555; }
+            .btn-back {
+                display: inline-block;
+                text-decoration: none;
+                background: #00adb5; /* Tvoja --accent boja */
+                color: white;
+                padding: 12px 25px;
+                border-radius: 25px;
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 13px;
+                transition: 0.3s;
+                border: none;
+                cursor: pointer;
+            }
+            .btn-back:hover {
+                background: #008f95; /* Tvoja --accent-hover boja */
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 173, 181, 0.3);
+            }
         </style>
     </head>
     <body>
         <div class='ban-card'>
             <h1>Pristup Odbijen</h1>
-            <p>Vaša mrežna adresa je trajno ili privremeno suspendovana sa Chatter servera zbog kršenja pravila zajednice.</p>
-            <div class='ip-display'>IP: $current_visitor_ip</div>
-            <div class='footer'>Ukoliko smatrate da je ovo greška, kontaktirajte administratora.</div>
+            <p>Vaša mrežna adresa je suspendovana. Ukoliko smatrate da je ovo greška, kontaktirajte administratora.</p>
+            <div class='ip-display'>ID: $current_visitor_ip</div>
+            <br>
+            <a href='../index.html' class='btn-back'>Nazad na početnu</a>
         </div>
     </body>
     </html>
     ");
 }
+
 
 
 $error = "";
