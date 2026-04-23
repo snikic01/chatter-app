@@ -230,3 +230,30 @@ body {
 .my-msg .message { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
 .friend-msg { justify-content: flex-start; }
 .friend-msg .message { background: var(--card-bg); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+
+/* Hitna objava - Crveni ram */
+.news-card.urgent {
+    border: 2px solid var(--danger) !important;
+    box-shadow: 0 5px 20px rgba(255, 77, 77, 0.2);
+}
+
+/* Dugmad za Edit/Delete unutar kartice */
+.news-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+}
+
+.btn-mini {
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.btn-edit { background: #555; color: white; }
+.btn-delete { background: var(--danger); color: white; }
