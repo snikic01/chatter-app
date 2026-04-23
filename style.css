@@ -288,17 +288,59 @@ body {
 .status-active { background: var(--success); color: black; }
 .status-banned { background: var(--danger); color: white; }
 
+/* 11. COLLAPSIBLE LEVI SIDEBAR ČLANOVA (GROUP CHAT) */
+.group-container { 
+    display: flex; 
+    flex: 1; 
+    height: 100vh; 
+    overflow: hidden; 
+}
+
+.members-sidebar { 
+    width: 240px; 
+    background: var(--sidebar-bg); 
+    border-right: 1px solid var(--border); /* Ivica desno jer je on levo */
+    padding: 20px; 
+    display: flex; 
+    flex-direction: column; 
+    transition: 0.3s ease; 
+    order: -1; /* Forsira da bude pre chat-area */
+    flex-shrink: 0;
+}
+
+.members-sidebar.collapsed { 
+    width: 0; 
+    padding: 0; 
+    border-right: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toggle-members-btn {
+    background: var(--card-bg);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 12px;
+    transition: 0.2s;
+}
+
+.toggle-members-btn:hover { background: var(--accent); color: white; }
+
 /* 10. MOBILNA OPTIMIZACIJA (RESPONSIVE) */
 @media (max-width: 768px) {
     body {
         flex-direction: column;
-        overflow: auto; /* Dozvoljava skrolovanje cele strane na mobilnom */
+        overflow: auto; 
     }
 
     .sidebar {
         width: 100%;
         height: auto;
-        max-height: 400px; /* Ograničavamo sidebar da ne zauzme ceo ekran */
+        max-height: 400px; 
         border-right: none;
         border-bottom: 1px solid var(--border);
     }
@@ -311,11 +353,11 @@ body {
     }
 
     .chat-area {
-        height: 100vh; /* Čet ostaje preko celog ekrana */
+        height: 100vh; 
     }
 
     .message {
-        max-width: 85%; /* Poruke su šire na malim ekranima */
+        max-width: 85%; 
     }
 
     .btn-send {
@@ -329,18 +371,25 @@ body {
 
     .admin-table {
         display: block;
-        overflow-x: auto; /* Tabela dobija horizontalni scroll ako je preširoka */
+        overflow-x: auto; 
+    }
+
+    /* Članovi u grupama na mobilnom iskaču s leva */
+    .members-sidebar { 
+        position: absolute; 
+        left: 0; 
+        height: 100%; 
+        z-index: 100; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5); 
     }
 }
 
 /* --- AUTOMATSKO SAKRIVANJE GLAVNOG SIDEBARA U ČETU --- */
 @media (max-width: 768px) {
-    /* Ako je otvoren chat ili group_chat, sakrij dashboard sidebar */
     body:has(.chat-area) .sidebar {
         display: none !important;
     }
     
-    /* Osiguraj da chat area zauzima pun ekran na mobilnom */
     .chat-area {
         width: 100vw !important;
         flex: 1;
