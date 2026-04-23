@@ -9,8 +9,10 @@ $success = "";
 if (isset($_POST['register'])) {
     $u = trim($_POST['username']);
     $p = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
     try {
-        $stmt = $pdo->prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)");
+        // Podrazumevano, is_banned je 0 (nije banovan)
+        $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, is_banned) VALUES (?, ?, 0)");
         $stmt->execute([$u, $p]);
         $success = "Uspešna registracija! Sad se uloguj.";
     } catch (Exception $e) {
@@ -22,19 +24,35 @@ if (isset($_POST['register'])) {
 if (isset($_POST['login'])) {
     $u = trim($_POST['username']);
     $p = $_POST['password'];
+
     $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$u]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($p, $user['password_hash'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        header("Location: dashboard.php");
-        exit();
+        
+        // --- PROVERA BANA ---
+        if (isset($user['is_banned']) && $user['is_banned'] == 1) {
+            $error = "Pristup odbijen. Vaš nalog je suspendovan.";
+        } else {
+            // Ako nije banovan, nastavi sa logovanjem
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+
+            // Beleženje IP adrese u login_logs
+            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'];
+            $logStmt = $pdo->prepare("INSERT INTO login_logs (username, ip_address) VALUES (?, ?)");
+            $logStmt->execute([$user['username'], $ip]);
+
+            header("Location: dashboard.php");
+            exit();
+        }
+        
     } else {
         $error = "Pogrešni podaci.";
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="sr">
