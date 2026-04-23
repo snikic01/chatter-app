@@ -13,12 +13,16 @@ $requests = $stmt_req->fetchAll();
 if (count($requests) > 0) {
     echo '<div class="section-title">Zahtevi</div>';
     foreach ($requests as $r) {
-        echo "<div class='item-row' style='background: rgba(70, 209, 96, 0.1);'>
+        echo "<div class='item-row' style='background: rgba(70, 209, 96, 0.05); display: flex; justify-content: space-between; align-items: center;'>
                 <span>" . htmlspecialchars($r['username']) . "</span>
-                <a href='accept_friend.php?id={$r['id']}' style='color: var(--success); font-weight: bold; text-decoration: none;'>[✓]</a>
+                <div>
+                    <a href='accept_friend.php?id={$r['id']}' style='color: var(--success); font-weight: bold; text-decoration: none; margin-right: 10px;' title='Prihvati'>[✓]</a>
+                    <a href='reject_friend.php?id={$r['id']}' style='color: var(--danger); font-weight: bold; text-decoration: none;' title='Odbij' onclick='return confirm(\"Odbiti zahtev?\")'>[✕]</a>
+                </div>
               </div>";
     }
 }
+
 
 // --- PRIJATELJI ---
 echo '<div class="section-title">Prijatelji</div>';
