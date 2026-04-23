@@ -6,10 +6,11 @@ if (!isset($_SESSION['user_id'])) exit();
 $my_id = $_SESSION['user_id'];
 $total_unread = 0; // Na početku je nula
 
-// --- ZAHTEVI ---
+// --- 1. ZAHTEVI ---
 $stmt_req = $pdo->prepare("SELECT u.username, u.id FROM users u JOIN friends f ON u.id = f.user_id WHERE f.friend_id = ? AND f.status = 'pending'");
 $stmt_req->execute([$my_id]);
 $requests = $stmt_req->fetchAll();
+
 if (count($requests) > 0) {
     echo '<div class="section-title">Zahtevi</div>';
     foreach ($requests as $r) {
@@ -23,8 +24,7 @@ if (count($requests) > 0) {
     }
 }
 
-
-// --- PRIJATELJI ---
+// --- 2. PRIJATELJI ---
 echo '<div class="section-title">Prijatelji</div>';
 $stmt = $pdo->prepare("SELECT u.username, u.id, u.last_seen FROM users u JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id) WHERE (f.user_id = ? OR f.friend_id = ?) AND u.id != ? AND f.status = 'accepted'");
 $stmt->execute([$my_id, $my_id, $my_id]);
@@ -37,7 +37,6 @@ while($f = $stmt->fetch()) {
     $st_u = $pdo->prepare("SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND receiver_id = ? AND seen = 0 AND group_id IS NULL");
     $st_u->execute([$f['id'], $my_id]);
     $count = $st_u->fetchColumn();
-    
     $total_unread += $count; // DODAJEMO U UKUPAN ZBIR
 
     echo "<a href='chat.php?user_id={$f['id']}' class='item-row'>
@@ -46,8 +45,15 @@ while($f = $stmt->fetch()) {
     echo "</a>";
 }
 
-// --- GRUPE ---
+// --- 3. GRUPE ---
 echo '<div class="section-title">Grupe</div>';
+
+// *** DODATA FORMA ZA KREIRANJE GRUPE KOJA JE NESTALA ***
+echo '<form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px; align-items: center; padding: 0 5px;">
+        <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
+        <button type="submit" class="btn-send" style="width:40px; height:35px; min-width:40px; padding:0; display:flex; justify-content:center; align-items:center;">+</button>
+      </form>';
+
 $stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
 $stmt_g->execute([$my_id]);
 
@@ -59,7 +65,6 @@ while($g = $stmt_g->fetch()) {
     ");
     $st_ug->execute([$g['id'], $my_id, $my_id]);
     $g_unread = $st_ug->fetchColumn();
-    
     $total_unread += $g_unread; // DODAJEMO U UKUPAN ZBIR
 
     echo "<a href='group_chat.php?id={$g['id']}' class='item-row' style='color: var(--group-gold);'>
@@ -68,11 +73,7 @@ while($g = $stmt_g->fetch()) {
     echo "</a>";
 }
 
-// --- KLJUČNA LINIJA ZA ZVUK ---
-// Sada ispisujemo zbir koji je JavaScript-u potreban
-echo "<div id='total-unread-count' style='display:none;'>$total_unread</div>";
-
-// Predlog prijatelja
+// --- 4. PREDLOZI PRIJATELJA ---
 echo '<div class="section-title">Predlozi</div>';
 $stmt_sug = $pdo->prepare("
     SELECT id, username FROM users 
@@ -98,4 +99,6 @@ if (count($suggestions) > 0) {
     echo "<div style='padding: 10px; font-size: 11px; color: var(--text-muted);'>Nema novih predloga.</div>";
 }
 
+// --- KLJUČNA LINIJA ZA ZVUK (Sakrivena) ---
+echo "<div id='total-unread-count' style='display:none;'>$total_unread</div>";
 ?>
