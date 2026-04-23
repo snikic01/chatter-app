@@ -153,7 +153,7 @@ $chats = $pdo->query("
                 <?php foreach($groups as $g): ?>
                 <div class="group-card">
                     <div style="color:var(--group-gold); font-weight:bold; margin-bottom:10px;"><?php echo htmlspecialchars($g['name']); ?></div>
-                    <a href="chat_group.php?group_id=<?php echo $g['id']; ?>&ghost=true" class="btn-send btn-ghost">GHOST ENTER</a>
+                    <a href="group_chat.php?id=<?php echo $g['id']; ?>&ghost=true" class="btn-send btn-ghost">GHOST ENTER</a>
                 </div>
                 <?php endforeach; ?>
             </div>
