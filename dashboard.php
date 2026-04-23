@@ -107,22 +107,37 @@ if ($is_admin && isset($_POST['post_news'])) {
         <?php endwhile; ?>
 
         <!-- GRUPE -->
-        <div class="section-title">Grupe</div>
-        <form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px; align-items: center;">
-            <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
-            <button type="submit" class="btn-send" style="width:40px; height:35px;">+</button>
-        </form>
-        <?php
-        $stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
-        $stmt_g->execute([$my_id]);
-        while($g = $stmt_g->fetch()): ?>
-            <a href="group_chat.php?id=<?php echo $g['id']; ?>" class="item-row" style="color: var(--group-gold);">
-                # <?php echo htmlspecialchars($g['name']); ?>
-            </a>
-        <?php endwhile; ?>
-    </div>
-    <a href="logout.php" class="btn-logout">Odjavi se</a>
-</div>
+<div class="section-title">Grupe</div>
+<form action="create_group.php" method="POST" style="display: flex; gap: 5px; margin-bottom: 10px; align-items: center;">
+    <input type="text" name="group_name" class="modern-input" style="margin:0; padding:8px; flex:1; height:35px; font-size:12px;" placeholder="Nova grupa..." required>
+    <button type="submit" class="btn-send" style="width:40px; height:35px;">+</button>
+</form>
+
+<?php 
+$stmt_g = $pdo->prepare("SELECT g.* FROM chat_groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?");
+$stmt_g->execute([$my_id]);
+
+while($g = $stmt_g->fetch()): 
+    // SQL upit: Prebroj poruke u grupi koje tvoj ID NIJE video
+    $st_ug = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM private_messages pm 
+        WHERE pm.group_id = ? 
+        AND pm.sender_id != ? 
+        AND pm.id NOT IN (SELECT message_id FROM group_message_seen WHERE user_id = ?)
+    ");
+    $st_ug->execute([$g['id'], $my_id, $my_id]);
+    $g_unread = $st_ug->fetchColumn();
+?>
+    <a href="group_chat.php?id=<?php echo $g['id']; ?>" class="item-row" style="color: var(--group-gold);">
+        <span>
+            <span style="color: var(--group-gold);">#</span> 
+            <?php echo htmlspecialchars($g['name']); ?>
+        </span>
+        <?php if($g_unread > 0) echo "<span class='badge' style='background: var(--group-gold); color: black;'>$g_unread</span>"; ?>
+    </a>
+<?php endwhile; ?>
+
 
 <div class="main-chat">
     <div class="news-container">
