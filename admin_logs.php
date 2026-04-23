@@ -37,18 +37,21 @@ $groups = $pdo->query("SELECT * FROM chat_groups ORDER BY name ASC")->fetchAll()
 // 4. Banovane IP adrese
 $banned_ips = $pdo->query("SELECT ip_address FROM banned_ips")->fetchAll(PDO::FETCH_COLUMN);
 
-// 5. NOVO: Privatni četovi (ko s kim priča)
+// 5. Privatni četovi (Samo za korisnike koji NISU obrisani)
 $chats = $pdo->query("
     SELECT DISTINCT 
-        LEAST(sender_id, receiver_id) as user_a, 
-        GREATEST(sender_id, receiver_id) as user_b,
-        (SELECT username FROM users WHERE id = user_a) as name_a,
-        (SELECT username FROM users WHERE id = user_b) as name_b,
-        MAX(created_at) as last_msg
-    FROM private_messages 
+        LEAST(m.sender_id, m.receiver_id) as user_a, 
+        GREATEST(m.sender_id, m.receiver_id) as user_b,
+        u1.username as name_a,
+        u2.username as name_b,
+        MAX(m.created_at) as last_msg
+    FROM private_messages m
+    JOIN users u1 ON u1.id = LEAST(m.sender_id, m.receiver_id)
+    JOIN users u2 ON u2.id = GREATEST(m.sender_id, m.receiver_id)
     GROUP BY user_a, user_b 
     ORDER BY last_msg DESC
 ")->fetchAll();
+
 ?>
 
 <!DOCTYPE html>
