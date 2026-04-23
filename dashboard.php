@@ -162,28 +162,27 @@ if ($is_admin && isset($_GET['edit_news'])) {
     </div>
 
     <script>
-    let lastTotalUnread = 0;
+let lastTotalUnread = 0;
 
-    // 1. Osvežavanje Sidebara
-    function refreshSidebar() {
-        fetch('fetch_sidebar.php').then(r => r.text()).then(data => {
-            document.getElementById('dynamic-sidebar-content').innerHTML = data;
-            const countEl = document.getElementById('total-unread-count');
-            if (countEl) {
-                let currentCount = parseInt(countEl.innerText);
-                if (currentCount > lastTotalUnread) {
-                    document.getElementById('notif-sound').play().catch(e => console.log("Audio play blocked"));
-                }
-                lastTotalUnread = currentCount;
+// 1. Osvežavanje Sidebara
+function refreshSidebar() {
+    fetch('fetch_sidebar.php').then(r => r.text()).then(data => {
+        document.getElementById('dynamic-sidebar-content').innerHTML = data;
+        const countEl = document.getElementById('total-unread-count');
+        if (countEl) {
+            let currentCount = parseInt(countEl.innerText);
+            if (currentCount > lastTotalUnread) {
+                document.getElementById('notif-sound').play().catch(e => console.log("Audio play blocked"));
             }
-        });
-    }
+            lastTotalUnread = currentCount;
+        }
+    });
+}
 
-    // 2. Osvežavanje Vesti
-    function refreshNews() {
-    // Proverava da li je kursor trenutno u nekom polju za kucanje (input)
-    const isTyping = document.activeElement.tagName === 'INPUT' || 
-                     document.activeElement.tagName === 'TEXTAREA';
+// 2. Osvežavanje Vesti (Pametni refresh koji ne prekida kucanje)
+function refreshNews() {
+    const active = document.activeElement;
+    const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
 
     if (!isTyping) {
         fetch('fetch_news.php')
@@ -194,42 +193,70 @@ if ($is_admin && isset($_GET['edit_news'])) {
     }
 }
 
+// 3. Funkcija za Like (AJAX)
+function toggleLike(newsId) {
+    let fd = new FormData();
+    fd.append('toggle_like', '1');
+    fd.append('news_id', newsId);
 
-    // 3. Funkcija za Like (AJAX)
-    function toggleLike(newsId) {
+    fetch('dashboard.php', { method: 'POST', body: fd })
+        .then(() => refreshNews());
+}
+
+// 4. Funkcija za Komentar (AJAX)
+function sendComment(newsId) {
+    const input = document.getElementById('comm-txt-' + newsId);
+    const text = input.value.trim();
+    if (!text) return;
+
+    let fd = new FormData();
+    fd.append('post_comment', '1');
+    fd.append('news_id', newsId);
+    fd.append('comment_text', text);
+
+    fetch('dashboard.php', { method: 'POST', body: fd })
+        .then(() => {
+            input.value = '';
+            refreshNews();
+        });
+}
+
+// 5. NOVO: Funkcija za Brisanje Komentara (AJAX)
+function deleteComment(commentId) {
+    if (!confirm("Obrisati ovaj komentar?")) return;
+
+    let fd = new FormData();
+    fd.append('delete_comment_ajax', '1');
+    fd.append('comment_id', commentId);
+
+    fetch('dashboard.php', { method: 'POST', body: fd })
+        .then(() => refreshNews());
+}
+
+// 6. NOVO: Funkcija za Editovanje Komentara (AJAX + Prompt)
+function editComment(commentId) {
+    const currentText = document.getElementById('comment-text-' + commentId).innerText;
+    const newText = prompt("Izmeni komentar:", currentText);
+
+    if (newText !== null && newText.trim() !== "" && newText !== currentText) {
         let fd = new FormData();
-        fd.append('toggle_like', '1');
-        fd.append('news_id', newsId);
+        fd.append('edit_comment_ajax', '1');
+        fd.append('comment_id', commentId);
+        fd.append('new_text', newText);
 
         fetch('dashboard.php', { method: 'POST', body: fd })
-            .then(() => refreshNews()); // Samo osvežimo listu vesti
+            .then(() => refreshNews());
     }
+}
 
-    // 4. Funkcija za Komentar (AJAX)
-    function sendComment(newsId) {
-        const input = document.getElementById('comm-txt-' + newsId);
-        const text = input.value.trim();
-        if (!text) return;
+// Intervali
+setInterval(refreshSidebar, 5000);
+setInterval(refreshNews, 10000); 
 
-        let fd = new FormData();
-        fd.append('post_comment', '1');
-        fd.append('news_id', newsId);
-        fd.append('comment_text', text);
+// Inicijalno učitavanje
+refreshSidebar();
+refreshNews();
+</script>
 
-        fetch('dashboard.php', { method: 'POST', body: fd })
-            .then(() => {
-                input.value = '';
-                refreshNews();
-            });
-    }
-
-    // Intervali
-    setInterval(refreshSidebar, 5000);
-    setInterval(refreshNews, 10000); // Vesti se osvežavaju na 10 sekundi
-
-    // Inicijalno učitavanje
-    refreshSidebar();
-    refreshNews();
-    </script>
 </body>
 </html>

@@ -5,7 +5,6 @@ require_once 'db_chatter.php';
 if (!isset($_SESSION['user_id'])) exit();
 
 $my_id = $_SESSION['user_id'];
-// Proveravamo da li je korisnik admin
 $is_admin = ($_SESSION['username'] === 'snikic01');
 
 $news = $pdo->query("SELECT * FROM admin_news ORDER BY created_at DESC")->fetchAll();
@@ -37,18 +36,16 @@ foreach ($news as $n):
         
         <div class="news-footer">
             <div class="interaction-bar">
-                <!-- Lajk dugme -->
                 <button onclick="toggleLike(<?= $n['id'] ?>)" class="btn-like <?= $liked ? 'active' : '' ?>">
                     <?= $liked ? '❤️' : '🤍' ?> <?= $l_count ?>
                 </button>
                 
                 <span style="font-size:12px; color:var(--text-muted);">💬 <?= count($comments) ?></span>
 
-                <!-- VRACENA ADMIN DUGMAD -->
                 <?php if ($is_admin): ?>
                     <div style="margin-left:auto; display: flex; gap: 10px;">
                         <a href="dashboard.php?edit_news=<?= $n['id'] ?>" class="btn-mini btn-edit">Edit</a>
-                        <a href="dashboard.php?delete_news=<?= $n['id'] ?>" class="btn-mini btn-delete" onclick="return confirm('Obrisati?')">Del</a>
+                        <a href="dashboard.php?delete_news=<?= $n['id'] ?>" class="btn-mini btn-delete" onclick="return confirm('Obrisati objavu?')">Del</a>
                     </div>
                 <?php endif; ?>
             </div>
@@ -58,16 +55,25 @@ foreach ($news as $n):
                     <div class="comment-item">
                         <div class="comment-content">
                             <span class="comment-user"><?= htmlspecialchars($c['username']) ?>:</span>
-                            <?= htmlspecialchars($c['comment_text']) ?>
+                            <span id="comment-text-<?= $c['id'] ?>"><?= htmlspecialchars($c['comment_text']) ?></span>
                         </div>
-                        <?php if($is_admin): ?>
-                            <a href="dashboard.php?delete_comment=<?= $c['id'] ?>" class="del-com" onclick="return confirm('Obrisati komentar?')">✕</a>
-                        <?php endif; ?>
+                        
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <!-- Korisnik može da edituje samo svoj komentar -->
+                            <?php if($c['user_id'] == $my_id): ?>
+                                <button onclick="editComment(<?= $c['id'] ?>)" class="btn-mini" style="background:none; color:var(--accent); border:none; cursor:pointer; font-size:10px; opacity:0.6;">Edit</button>
+                            <?php endif; ?>
+
+                            <!-- Admin može da briše sve, korisnik samo svoje -->
+                            <?php if($is_admin || $c['user_id'] == $my_id): ?>
+                                <button onclick="deleteComment(<?= $c['id'] ?>)" class="del-com" style="background:none; border:none; cursor:pointer; color:var(--danger);">✕</button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endforeach; ?>
 
                 <div class="comment-input-group">
-                    <input type="text" id="comm-txt-<?= $n['id'] ?>" placeholder="Napiši komentar...">
+                    <input type="text" id="comm-txt-<?= $n['id'] ?>" placeholder="Napiši komentar..." autocomplete="off">
                     <button onclick="sendComment(<?= $n['id'] ?>)" class="btn-send" style="min-width:50px; height:30px; font-size:10px;">OK</button>
                 </div>
             </div>
