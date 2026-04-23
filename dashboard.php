@@ -181,10 +181,19 @@ if ($is_admin && isset($_GET['edit_news'])) {
 
     // 2. Osvežavanje Vesti
     function refreshNews() {
-        fetch('fetch_news.php').then(r => r.text()).then(data => {
-            document.getElementById('dynamic-news').innerHTML = data;
-        });
+    // Proverava da li je kursor trenutno u nekom polju za kucanje (input)
+    const isTyping = document.activeElement.tagName === 'INPUT' || 
+                     document.activeElement.tagName === 'TEXTAREA';
+
+    if (!isTyping) {
+        fetch('fetch_news.php')
+            .then(r => r.text())
+            .then(data => {
+                document.getElementById('dynamic-news').innerHTML = data;
+            });
     }
+}
+
 
     // 3. Funkcija za Like (AJAX)
     function toggleLike(newsId) {
