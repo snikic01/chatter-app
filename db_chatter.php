@@ -1,4 +1,9 @@
 <?php
+// Osiguraj da je sesija aktivna pre provere
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $host = 'localhost';
 $db   = 'chatter_db';
 $user = 'root';
