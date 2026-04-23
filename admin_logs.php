@@ -6,20 +6,17 @@ if (!isset($_SESSION['username']) || $_SESSION['username'] !== 'snikic01') {
     header("Location: index.php"); exit();
 }
 
-// --- LOGIKA ZA AKCIJE ---
+// --- AKCIJE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 1. User Ban/Unban
     if (isset($_POST['toggle_ban'])) {
         $new_status = $_POST['current_status'] == 1 ? 0 : 1;
         $stmt = $pdo->prepare("UPDATE users SET is_banned = ? WHERE id = ? AND username != 'snikic01'");
         $stmt->execute([$new_status, $_POST['user_id']]);
     }
-    // 2. IP Ban
     if (isset($_POST['ip_ban'])) {
         $stmt = $pdo->prepare("INSERT IGNORE INTO banned_ips (ip_address) VALUES (?)");
         $stmt->execute([$_POST['target_ip']]);
     }
-    // 3. IP Unban
     if (isset($_POST['ip_unban'])) {
         $stmt = $pdo->prepare("DELETE FROM banned_ips WHERE ip_address = ?");
         $stmt->execute([$_POST['target_ip']]);
@@ -27,47 +24,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header("Location: admin_logs.php"); exit();
 }
 
-// --- DOHVATANJE PODATAKA ---
-$logs = $pdo->query("SELECT * FROM login_logs ORDER BY login_time DESC LIMIT 15")->fetchAll();
-$users = $pdo->query("SELECT id, username, is_banned FROM users")->fetchAll();
+// --- UPITI ---
+// 1. Unikatni logovi (Samo poslednje logovanje po korisniku)
+$logs = $pdo->query("SELECT username, ip_address, MAX(login_time) as last_login 
+                     FROM login_logs 
+                     GROUP BY username 
+                     ORDER BY last_login DESC LIMIT 20")->fetchAll();
+
+// 2. Lista svih korisnika OSIM admina
+$users = $pdo->query("SELECT id, username, is_banned FROM users WHERE username != 'snikic01'")->fetchAll();
+
+// 3. Lista grupa
+$groups = $pdo->query("SELECT * FROM chat_groups ORDER BY name ASC")->fetchAll();
+
+// 4. Banovane IP adrese za proveru dugmadi
 $banned_ips = $pdo->query("SELECT ip_address FROM banned_ips")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <!DOCTYPE html>
 <html lang="sr">
 <head>
-    <meta charset="UTF-8"><link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
     <style>
-        .btn-unban { background: #ffde7d !important; color: black !important; } /* Drveno/Zlatno dugme */
-        .btn-ip-ban { background: #555 !important; font-size: 9px !important; margin-left: 5px; }
-        .btn-ip-unban { background: var(--success) !important; font-size: 9px !important; margin-left: 5px; color: black !important; }
+        .btn-ghost { background: #6c5ce7 !important; border-radius: 20px; font-size: 11px; padding: 5px 15px; }
+        .btn-ghost:hover { background: #a29bfe !important; }
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .group-card { background: var(--sidebar-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="sidebar-header">ADMIN PANEL</div>
-        <div class="scroll-area"><a href="dashboard.php" class="item-row">← Dashboard</a></div>
+        <div class="sidebar-header">ROOT TERMINAL</div>
+        <div class="scroll-area">
+            <a href="dashboard.php" class="item-row">← Dashboard</a>
+            <a href="#logs" class="item-row">Aktivni IP Logovi</a>
+            <a href="#users" class="item-row">Korisnička Kontrola</a>
+            <a href="#groups" class="item-row">Ghost Mode Grupe</a>
+        </div>
     </div>
 
     <div class="main-chat">
-        <!-- LOGOVI SA IP BAN OPCIJOM -->
-        <div class="news-card">
-            <h2 style="color: var(--accent);">Recent Logs & IP Control</h2>
+        <!-- TABELA 1: UNIKATNI LOGOVI -->
+        <div id="logs" class="news-card">
+            <h2 style="color: var(--accent);">Poslednje Lokacije Korisnika</h2>
             <table class="admin-table">
-                <tr><th>User</th><th>IP</th><th>Action</th></tr>
-                <?php foreach($logs as $l): 
-                    $is_ip_banned = in_array($l['ip_address'], $banned_ips); ?>
+                <tr><th>Korisnik</th><th>IP</th><th>Vreme</th><th>IP Ban</th></tr>
+                <?php foreach($logs as $l): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($l['username']); ?></td>
                     <td><span class="ip-badge"><?php echo $l['ip_address']; ?></span></td>
+                    <td style="font-size:12px; color:var(--text-muted);"><?php echo date('H:i', strtotime($l['last_login'])); ?></td>
                     <td>
-                        <form method="POST" style="display:inline;">
+                        <form method="POST">
                             <input type="hidden" name="target_ip" value="<?php echo $l['ip_address']; ?>">
-                            <?php if($is_ip_banned): ?>
-                                <button type="submit" name="ip_unban" class="btn-send btn-ip-unban">UNBAN IP</button>
-                            <?php else: ?>
-                                <button type="submit" name="ip_ban" class="btn-send btn-ip-ban">BAN IP</button>
-                            <?php endif; ?>
+                            <button type="submit" name="<?php echo in_array($l['ip_address'], $banned_ips) ? 'ip_unban' : 'ip_ban'; ?>" 
+                                    class="btn-send" style="height:25px; min-width:70px; font-size:9px; background:<?php echo in_array($l['ip_address'], $banned_ips) ? 'var(--success)' : '#444'; ?>;">
+                                <?php echo in_array($l['ip_address'], $banned_ips) ? 'UNBAN' : 'BAN'; ?>
+                            </button>
                         </form>
                     </td>
                 </tr>
@@ -75,25 +89,39 @@ $banned_ips = $pdo->query("SELECT ip_address FROM banned_ips")->fetchAll(PDO::FE
             </table>
         </div>
 
-        <!-- USER MANAGEMENT -->
-        <div class="news-card">
-            <h2 style="color: var(--accent);">User Management</h2>
+        <!-- TABELA 2: UPRAVLJANJE KORISNICIMA -->
+        <div id="users" class="news-card">
+            <h2 style="color: var(--accent);">Ban Lista</h2>
             <table class="admin-table">
                 <?php foreach($users as $u): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($u['username']); ?></td>
-                    <td>
+                    <td><span class="status-badge <?php echo $u['is_banned'] ? 'status-banned' : 'status-active'; ?>"><?php echo $u['is_banned'] ? 'Banovan' : 'Aktivan'; ?></span></td>
+                    <td style="text-align:right;">
                         <form method="POST">
                             <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
                             <input type="hidden" name="current_status" value="<?php echo $u['is_banned']; ?>">
-                            <button type="submit" name="toggle_ban" class="btn-send <?php echo $u['is_banned'] ? 'btn-unban' : ''; ?>">
-                                <?php echo $u['is_banned'] ? 'UNBAN USER' : 'BAN USER'; ?>
+                            <button type="submit" name="toggle_ban" class="btn-send <?php echo $u['is_banned'] ? 'btn-unban' : ''; ?>" style="height:30px; min-width:100px;">
+                                <?php echo $u['is_banned'] ? 'UNBAN' : 'BAN'; ?>
                             </button>
                         </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </table>
+        </div>
+
+        <!-- SEKCIJA 3: GHOST MODE GRUPE -->
+        <div id="groups" class="news-card">
+            <h2 style="color: var(--accent);">Ghost Monitoring</h2>
+            <div class="admin-grid">
+                <?php foreach($groups as $g): ?>
+                <div class="group-card">
+                    <div style="color:var(--group-gold); font-weight:bold; margin-bottom:10px;"><?php echo htmlspecialchars($g['name']); ?></div>
+                    <a href="chat.php?group_id=<?php echo $g['id']; ?>&ghost=true" class="btn-send btn-ghost">GHOST ENTER</a>
+                </div>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 </body>
