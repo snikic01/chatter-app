@@ -332,3 +332,17 @@ body {
         overflow-x: auto; /* Tabela dobija horizontalni scroll ako je preširoka */
     }
 }
+
+/* --- AUTOMATSKO SAKRIVANJE GLAVNOG SIDEBARA U ČETU --- */
+@media (max-width: 768px) {
+    /* Ako je otvoren chat ili group_chat, sakrij dashboard sidebar */
+    body:has(.chat-area) .sidebar {
+        display: none !important;
+    }
+    
+    /* Osiguraj da chat area zauzima pun ekran na mobilnom */
+    .chat-area {
+        width: 100vw !important;
+        flex: 1;
+    }
+}
