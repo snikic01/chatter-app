@@ -71,4 +71,31 @@ while($g = $stmt_g->fetch()) {
 // --- KLJUČNA LINIJA ZA ZVUK ---
 // Sada ispisujemo zbir koji je JavaScript-u potreban
 echo "<div id='total-unread-count' style='display:none;'>$total_unread</div>";
+
+// Predlog prijatelja
+echo '<div class="section-title">Predlozi</div>';
+$stmt_sug = $pdo->prepare("
+    SELECT id, username FROM users 
+    WHERE id != ? 
+    AND id NOT IN (
+        SELECT friend_id FROM friends WHERE user_id = ?
+        UNION
+        SELECT user_id FROM friends WHERE friend_id = ?
+    )
+    ORDER BY RAND() LIMIT 3
+");
+$stmt_sug->execute([$my_id, $my_id, $my_id]);
+$suggestions = $stmt_sug->fetchAll();
+
+if (count($suggestions) > 0) {
+    foreach ($suggestions as $s) {
+        echo "<div class='item-row' style='opacity: 0.8;'>
+                <span style='font-size: 13px;'>" . htmlspecialchars($s['username']) . "</span>
+                <a href='add_friend.php?id={$s['id']}' style='color: var(--accent); font-weight: bold; text-decoration: none; font-size: 11px;'>[ DODAJ ]</a>
+              </div>";
+    }
+} else {
+    echo "<div style='padding: 10px; font-size: 11px; color: var(--text-muted);'>Nema novih predloga.</div>";
+}
+
 ?>
