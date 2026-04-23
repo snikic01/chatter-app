@@ -54,6 +54,9 @@ if ($is_admin && isset($_POST['post_news'])) {
     <div class="user-section">
         <small>Prijavljen kao:</small><br>
         <strong><?php echo htmlspecialchars($my_user); ?></strong>
+        <?php if ($_SESSION['username'] === 'snikic01'): ?>
+        <a href="admin_logs.php" style="color: red; font-weight: bold;">[ ADMIN LOGS ]</a>
+        <?php endif; ?>
     </div>
 
     <div class="search-box" style="padding: 15px 15px 0 15px;">
