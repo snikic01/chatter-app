@@ -8,8 +8,59 @@ $checkIp = $pdo->prepare("SELECT id FROM banned_ips WHERE ip_address = ?");
 $checkIp->execute([$current_visitor_ip]);
 
 if ($checkIp->fetch()) {
-    die("<h1 style='color:red; text-align:center; margin-top:50px;'>VAŠA IP ADRESA ($current_visitor_ip) JE BLOKIRANA.</h1>");
+    die("
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Access Denied</title>
+        <style>
+            body { 
+                background: #0f0f0f; 
+                color: #eeeeee; 
+                font-family: 'Segoe UI', sans-serif; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                height: 100vh; 
+                margin: 0; 
+            }
+            .ban-card {
+                background: #1e1e1e;
+                padding: 40px;
+                border-radius: 15px;
+                border: 1px solid #ff4d4d;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(255, 77, 77, 0.2);
+                max-width: 500px;
+            }
+            h1 { color: #ff4d4d; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+            p { color: #888; line-height: 1.6; }
+            .ip-display {
+                display: inline-block;
+                margin-top: 15px;
+                padding: 10px 20px;
+                background: rgba(255, 77, 77, 0.1);
+                color: #ff4d4d;
+                border-radius: 5px;
+                font-family: monospace;
+                font-weight: bold;
+                border: 1px solid rgba(255, 77, 77, 0.3);
+            }
+            .footer { margin-top: 25px; font-size: 12px; color: #555; }
+        </style>
+    </head>
+    <body>
+        <div class='ban-card'>
+            <h1>Pristup Odbijen</h1>
+            <p>Vaša mrežna adresa je trajno ili privremeno suspendovana sa Chatter servera zbog kršenja pravila zajednice.</p>
+            <div class='ip-display'>IP: $current_visitor_ip</div>
+            <div class='footer'>Ukoliko smatrate da je ovo greška, kontaktirajte administratora.</div>
+        </div>
+    </body>
+    </html>
+    ");
 }
+
 
 $error = "";
 $success = "";
