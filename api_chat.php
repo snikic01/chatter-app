@@ -7,8 +7,11 @@ header("Access-Control-Allow-Methods: GET");
 require_once 'db_chatter.php';
 
 try {
-    // ISPRAVLJENO: Koristimo tabelu 'chat' i kolonu 'time' iz tvog repozitorijuma
-    $query = "SELECT username, message, time FROM chat ORDER BY id DESC LIMIT 30";
+    // Spajamo tabele private_messages i users da bismo dobili username pošiljaoca
+    $query = "SELECT u.username, pm.message, pm.created_at 
+              FROM private_messages pm 
+              JOIN users u ON pm.sender_id = u.id 
+              ORDER BY pm.id DESC LIMIT 30";
     
     if (isset($pdo)) {
         $stmt = $pdo->prepare($query);
@@ -18,16 +21,16 @@ try {
         $result = $conn->query($query);
         $results = $result->fetch_all(MYSQLI_ASSOC);
     } else {
-        $results = [["username" => "Sistem", "message" => "Proveri naziv PDO/conn promenljive.", "time" => date('Y-m-d H:i:s')]];
+        $results = [["username" => "Sistem", "message" => "Proveri naziv PDO/conn promenljive.", "created_at" => date('Y-m-d H:i:s')]];
     }
 
-    // Mapiramo 'time' u 'date' kako ne bismo morali da menjamo Android kod
+    // Mapiramo podatke za tvoj Android kod na telefonu
     $formattedResults = [];
     foreach ($results as $row) {
         $formattedResults[] = [
             "username" => $row['username'],
             "message" => $row['message'],
-            "date" => $row['time'] // tvoj 'time' šaljemo Androidu kao 'date'
+            "date" => $row['created_at'] // šaljemo created_at kao 'date' za Android
         ];
     }
 
