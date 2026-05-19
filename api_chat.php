@@ -9,8 +9,8 @@ require_once 'db_chatter.php';
 try {
     // Izvlačimo poslednjih 30 poruka iz baze
     // NAPOMENA: Ako ti se tabela ne zove 'messages' ili kolone imaju drugačija imena (npr. umest 'date' je 'created_at'), promeni ih ovde!
-    $query = "SELECT username, message, date FROM messages ORDER BY id DESC LIMIT 30";
-    
+    $query = "SELECT username, message, date FROM chat ORDER BY id DESC LIMIT 30";
+
     // Provera da li koristiš PDO ($pdo) ili MySQLi ($conn) u svom db_chatter.php
     if (isset($pdo)) {
         $stmt = $pdo->prepare($query);
