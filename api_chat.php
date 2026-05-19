@@ -7,11 +7,9 @@ header("Access-Control-Allow-Methods: GET");
 require_once 'db_chatter.php';
 
 try {
-    // Izvlačimo poslednjih 30 poruka iz baze
-    // NAPOMENA: Ako ti se tabela ne zove 'messages' ili kolone imaju drugačija imena (npr. umest 'date' je 'created_at'), promeni ih ovde!
-    $query = "SELECT username, message, date FROM chat ORDER BY id DESC LIMIT 30";
-
-    // Provera da li koristiš PDO ($pdo) ili MySQLi ($conn) u svom db_chatter.php
+    // ISPRAVLJENO: Koristimo tabelu 'chat' i kolonu 'time' iz tvog repozitorijuma
+    $query = "SELECT username, message, time FROM chat ORDER BY id DESC LIMIT 30";
+    
     if (isset($pdo)) {
         $stmt = $pdo->prepare($query);
         $stmt->execute();
@@ -20,13 +18,22 @@ try {
         $result = $conn->query($query);
         $results = $result->fetch_all(MYSQLI_ASSOC);
     } else {
-        // Ako skripta ne prepozna tvoju promenljivu, šalje test poruku
-        $results = [["username" => "Sistem", "message" => "API spojen! Proveri ime konekcije u db_chatter.php.", "date" => date('Y-m-d H:i:s')]];
+        $results = [["username" => "Sistem", "message" => "Proveri naziv PDO/conn promenljive.", "time" => date('Y-m-d H:i:s')]];
+    }
+
+    // Mapiramo 'time' u 'date' kako ne bismo morali da menjamo Android kod
+    $formattedResults = [];
+    foreach ($results as $row) {
+        $formattedResults[] = [
+            "username" => $row['username'],
+            "message" => $row['message'],
+            "date" => $row['time'] // tvoj 'time' šaljemo Androidu kao 'date'
+        ];
     }
 
     echo json_encode([
         "status" => "success",
-        "messages" => array_reverse($results)
+        "messages" => array_reverse($formattedResults)
     ]);
 
 } catch (Exception $e) {
