@@ -35,21 +35,22 @@ try {
     }
 
     // ================= 1. LISTA SAMO TVOJIH GRUPA + BROJAČ NEPROČITANIH =================
+        // ================= 1. LISTA TVOJIH GRUPA (Prilagođeno i za owner_id i za članstvo) =================
     if ($action === 'list') {
-        // PROMENJENO: Sada filtriramo kroz group_members (Isto kao na veb sajtu!)
-        $query = "SELECT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
+        // Povlačimo grupe gde je korisnik vlasnik ILI je dodat kao član u group_members
+        $query = "SELECT DISTINCT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
                   FROM chat_groups cg
-                  JOIN group_members gm ON cg.id = gm.group_id
-                  WHERE gm.user_id = ?
+                  LEFT JOIN group_members gm ON cg.id = gm.group_id
+                  WHERE cg.owner_id = ? OR gm.user_id = ?
                   ORDER BY cg.id ASC";
                   
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id, $user_id]);
+        $stmt->execute([$user_id, $user_id, $user_id]);
         $groups = $stmt->fetchAll();
 
         $outputGroups = [];
         foreach ($groups as $group) {
-            // Računamo nepročitane poruke iz ove grupe koje nisi poslao ti, a nema ih u group_message_seen
+            // Računamo nepročitane poruke za ovog korisnika u ovoj grupi
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND pm.id NOT IN (
@@ -64,7 +65,7 @@ try {
                 "name" => $group['name'],
                 "owner_id" => $group['owner_id'],
                 "is_owner" => $group['is_owner'],
-                "unread_count" => $unreadCount // Šaljemo broj nepročitanih u Android
+                "unread_count" => $unreadCount
             ];
         }
 
@@ -74,6 +75,7 @@ try {
         ]);
         exit;
     }
+
 
     // --- 2. KREIRANJE NOVE GRUPE ---
     if ($action === 'create') {
