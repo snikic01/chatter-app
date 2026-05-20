@@ -33,17 +33,23 @@ try {
         exit;
     }
 
-    // --- 1. LISTA SVIH GRUPA U KOJIMA JE KORISNIK ČLAN ---
+        // --- 1. LISTA SVIH GRUPA (Prilagođeno da radi identično kao veb sajt) ---
     if ($action === 'list') {
-        $query = "SELECT cg.id, cg.name, cg.created_by, (cg.created_by = ?) as is_owner 
-                  FROM chat_groups cg
-                  JOIN group_members gm ON cg.id = gm.group_id
-                  WHERE gm.user_id = ?";
+        // Povlačimo sve grupe iz baze, a proveravamo is_owner na osnovu created_by kolone
+        $query = "SELECT id, name, created_by, (created_by = ?) as is_owner 
+                  FROM chat_groups 
+                  ORDER BY id ASC";
+                  
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id, $user_id]);
-        echo json_encode(["success" => true, "groups" => $stmt->fetchAll()]);
+        $stmt->execute([$user_id]);
+        
+        echo json_encode([
+            "success" => true, 
+            "groups" => $stmt->fetchAll()
+        ]);
         exit;
     }
+
 
     // --- 2. KREIRANJE NOVE GRUPE ---
     if ($action === 'create') {
