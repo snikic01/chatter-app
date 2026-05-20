@@ -7,7 +7,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
-// Direktno definišemo parametre baze da zaobiđemo web sesije iz db_chatter.php
+// Otvaramo nezavisnu konekciju da izbegnemo $_SESSION provere iz db_chatter.php
 $host = 'localhost';
 $db   = 'chatter_db';
 $user = 'root';
@@ -22,7 +22,7 @@ try {
 
     $group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 8;
 
-    // Povlačimo podatke preko ispravnog PDO drajvera
+    // Povlačenje istorije poruka za KontraverzneBiznismene (ID: 8)
     $stmt = $pdo->prepare("SELECT username, message, sent_at FROM private_messages WHERE group_id = ? ORDER BY sent_at ASC");
     $stmt->execute([$group_id]);
     $rows = $stmt->fetchAll();
@@ -45,7 +45,7 @@ try {
 } catch (PDOException $e) {
     echo json_encode([
         "success" => false,
-        "message" => "Baza nedostupna: " . $e->getMessage(),
+        "message" => "Greška sa bazom: " . $e->getMessage(),
         "messages" => []
     ]);
     exit;
