@@ -13,15 +13,13 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // --- POPRAVLJEN UNIVERZALNI PARSER PARAMETARA ---
+    // --- NAJROBUSNIJI PARSER: ČITA DIREKTNO IZ URL STRINGA AKO JE SVE OSTALO PRAZNO ---
     $rawInput = file_get_contents("php://input");
-    $inputData = json_decode($rawInput, true);
+    $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
-    if (empty($inputData)) {
-        $inputData = $_POST;
-    }
-    if (empty($inputData)) {
-        $inputData = $_GET; // Omogućava direktan rad preko browser linka
+    // Ako je ruter obrisao nizove, ručno čitamo sirovi QUERY string sa servera
+    if (empty($inputData) && !empty($_SERVER['QUERY_STRING'])) {
+        parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
@@ -32,7 +30,7 @@ try {
             "success" => false, 
             "message" => "Korisnik je obavezan!", 
             "groups" => [],
-            "debug_received" => $inputData
+            "debug_server_query" => $_SERVER['QUERY_STRING'] // Pokazuje šta je stvarno stiglo u URL-u
         ]);
         exit;
     }
