@@ -5,6 +5,8 @@ header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
 ini_set('display_errors', 0);
+error_reporting(0);
+
 require_once 'db_chatter.php';
 
 $inputData = json_decode(file_get_contents("php://input"), true);
@@ -22,13 +24,12 @@ if (empty($username) || empty($message)) {
 }
 
 try {
-    $query = "INSERT INTO private_messages (group_id, username, message, sent_at) VALUES (?, ?, ?, NOW())";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("iss", $group_id, $username, $message);
+    $stmt = $pdo->prepare("INSERT INTO private_messages (group_id, username, message, sent_at) VALUES (?, ?, ?, NOW())");
     
-    if ($stmt->execute()) {
+    if ($stmt->execute([$group_id, $username, $message])) {
         echo json_encode([
             "success" => true,
+            "status" => "success",
             "message" => "Poruka uspešno poslata!"
         ]);
     } else {
