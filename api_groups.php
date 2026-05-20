@@ -16,22 +16,21 @@ try {
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
-    // Podrazumevana akcija je uvek listanje grupa
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
     $username = isset($inputData['username']) ? trim($inputData['username']) : '';
 
-    // ================= 1. LISTA SVIH GRUPA (Potpuno bezuslovna i otporna) =================
+    // ================= 1. LISTA SVIH GRUPA (Koristi ispravnu kolonu owner_id) =================
     if ($action === 'list') {
         $user_id = 0;
         
-        // Saznajemo ID korisnika SAMO ako je prosleđen, radi vlasništva (is_owner)
         if (!empty($username)) {
             $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
             $stmt->execute([$username]);
             $user_id = $stmt->fetchColumn() ?: 0;
         }
 
-        $query = "SELECT id, name, created_by, (created_by = ?) as is_owner 
+        // PROMENJENO: created_by zamenjeno sa owner_id prema strukturi tvoje baze
+        $query = "SELECT id, name, owner_id, (owner_id = ?) as is_owner 
                   FROM chat_groups 
                   ORDER BY id ASC";
                   
@@ -46,7 +45,6 @@ try {
     }
 
     // ================= STROGA PROVERA ZA NAPREDNE AKCIJE =================
-    // Za sve ostale akcije (create, leave, delete, members) korisnik MORA postojati
     if (empty($username)) {
         echo json_encode(["success" => false, "message" => "Korisnik je obavezan za ovu akciju!"]);
         exit;
@@ -69,7 +67,8 @@ try {
         }
 
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare("INSERT INTO chat_groups (name, created_by) VALUES (?, ?)");
+        // PROMENJENO: owner_id
+        $stmt = $pdo->prepare("INSERT INTO chat_groups (name, owner_id) VALUES (?, ?)");
         $stmt->execute([$group_name, $user_id]);
         $group_id = $pdo->lastInsertId();
 
@@ -94,7 +93,8 @@ try {
     if ($action === 'delete') {
         $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
         
-        $stmt = $pdo->prepare("SELECT created_by FROM chat_groups WHERE id = ?");
+        // PROMENJENO: owner_id
+        $stmt = $pdo->prepare("SELECT owner_id FROM chat_groups WHERE id = ?");
         $stmt->execute([$group_id]);
         $owner_id = $stmt->fetchColumn();
 
