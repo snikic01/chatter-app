@@ -1,8 +1,12 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 ini_set('display_errors', 0);
 error_reporting(0);
@@ -19,40 +23,51 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
+    // 1. UNIVERZALNI PARSER PODATAKA
+    $username = '';
+    $password = '';
+    $action = 'login';
+
+    // Prvi pokušaj: Sirovi JSON (Ktor podrazumevano šalje ovo)
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true);
 
+    // Drugi pokušaj: Klasičan $_POST (ako Nginx raspakuje saobraćaj)
     if (empty($inputData)) {
         $inputData = $_POST;
     }
 
-    // Hvata se 'action' parametar koji šalje Android (login ili register)
-    $action   = isset($inputData['action']) ? trim($inputData['action']) : 'login';
-    $username = isset($inputData['username']) ? trim($inputData['username']) : '';
-    $password = isset($inputData['password']) ? trim($inputData['password']) : '';
+    // Treći pokušaj: Ako stignu podaci preko običnog URL-a (za brzi test)
+    if (empty($inputData)) {
+        $inputData = $_GET;
+    }
+
+    if (!empty($inputData)) {
+        $username = isset($inputData['username']) ? trim($inputData['username']) : '';
+        $password = isset($inputData['password']) ? trim($inputData['password']) : '';
+        $action   = isset($inputData['action']) ? trim($inputData['action']) : 'login';
+    }
 
     if (empty($username) || empty($password)) {
         echo json_encode([
             "success" => false,
-            "message" => "Sva polja su obavezna!"
+            "message" => "Sva polja su obavezna! Proveri unos."
         ]);
         exit;
     }
 
     // ================= LOGIKA ZA REGISTRACIJU =================
     if ($action === 'register') {
-        // Provera da li korisnik već postoji
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->fetchColumn() > 0) {
             echo json_encode([
                 "success" => false,
-                "message" => "Greška! Ime zauzeto."
+                "message" => "Greška! Korisničko ime je već zauzeto."
             ]);
             exit;
         }
 
-        // Hesiranje lozinke i upis novog naloga
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $stmt = $pdo->prepare("INSERT INTO users (username, password, created_at) VALUES (?, ?, NOW())");
         
@@ -66,7 +81,7 @@ try {
         } else {
             echo json_encode([
                 "success" => false,
-                "message" => "Greška na serveru pri upisu."
+                "message" => "Greška na serveru pri upisu u bazu."
             ]);
         }
         exit;
@@ -98,7 +113,7 @@ try {
 } catch (PDOException $e) {
     echo json_encode([
         "success" => false,
-        "message" => "Baza nedostupna: " . $e->getMessage()
+        "message" => "Baza podataka je nedostupna: " . $e->getMessage()
     ]);
     exit;
 }
