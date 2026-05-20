@@ -57,7 +57,9 @@ try {
     }
 
     // ================= LOGIKA ZA REGISTRACIJU =================
+        // ================= LOGIKA ZA REGISTRACIJU =================
     if ($action === 'register') {
+        // Provera da li korisnik već postoji
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->fetchColumn() > 0) {
@@ -68,24 +70,31 @@ try {
             exit;
         }
 
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, created_at) VALUES (?, ?, NOW())");
-        
-        if ($stmt->execute([$username, $hashedPassword])) {
+        try {
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            
+            // Pokušavamo upis u bazu
+            $stmt = $pdo->prepare("INSERT INTO users (username, password, created_at) VALUES (?, ?, NOW())");
+            $stmt->execute([$username, $hashedPassword]);
+
             echo json_encode([
                 "success" => true,
                 "status" => "success",
                 "message" => "Uspešna registracija!",
                 "username" => $username
             ]);
-        } else {
+            exit;
+
+        } catch (PDOException $e) {
+            // KLJUČNI DEO: Vraćamo tačnu SQL grešku direktno na telefon!
             echo json_encode([
                 "success" => false,
-                "message" => "Greška na serveru pri upisu u bazu."
+                "message" => "SQL Greška pri upisu: " . $e->getMessage()
             ]);
+            exit;
         }
-        exit;
     }
+
 
     // ================= LOGIKA ZA PRIJAVU (LOGIN) =================
     if ($action === 'login') {
