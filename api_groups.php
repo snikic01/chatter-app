@@ -17,18 +17,17 @@ try {
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
-    $username = isset($inputData['username']) ? trim($inputData['username']) : '';
+    
+    // POPRAVLJENO: Čitamo direktno user_id broj sa telefona, preskačemo tabelu users!
+    $user_id  = isset($inputData['user_id']) ? intval($inputData['user_id']) : 0;
 
-    // ================= 1. LISTA SVIH GRUPA (Identično kao na tvom veb sajtu) =================
+    if ($user_id <= 0) {
+        echo json_encode(["success" => false, "message" => "Nevalidan User ID!", "groups" => []]);
+        exit;
+    }
+
+    // ================= 1. LISTA SVIH GRUPA + BROJAČ PORUKA =================
     if ($action === 'list') {
-        $user_id = 0;
-        if (!empty($username)) {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $user_id = $stmt->fetchColumn() ?: 0;
-        }
-
-        // ISPRAVLJENO: Vučemo sve grupe bez ikakvih LEFT JOIN filtera članstva koji te blokiraju
         $query = "SELECT id, name, owner_id, (owner_id = ?) as is_owner 
                   FROM chat_groups 
                   ORDER BY id ASC";
@@ -39,7 +38,6 @@ try {
 
         $outputGroups = [];
         foreach ($groups as $group) {
-            // Bezbedno računamo broj nepročitanih poruka preko NOT EXISTS
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND NOT EXISTS (
@@ -58,12 +56,10 @@ try {
             ];
         }
 
-        echo json_encode([
-            "success" => true, 
-            "groups" => $outputGroups
-        ]);
+        echo json_encode(["success" => true, "groups" => $outputGroups]);
         exit;
     }
+
 
     // --- PROVERA KORISNIKA ZA OSTALE AKCIJE ---
     if (empty($username)) {
