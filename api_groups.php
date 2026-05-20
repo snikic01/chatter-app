@@ -19,34 +19,8 @@ try {
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
     $username = isset($inputData['username']) ? trim($inputData['username']) : '';
 
-    // ================= 1. LISTA SVIH GRUPA (Koristi ispravnu kolonu owner_id) =================
-    if ($action === 'list') {
-        $user_id = 0;
-        
-        if (!empty($username)) {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $user_id = $stmt->fetchColumn() ?: 0;
-        }
-
-        // PROMENJENO: created_by zamenjeno sa owner_id prema strukturi tvoje baze
-        $query = "SELECT id, name, owner_id, (owner_id = ?) as is_owner 
-                  FROM chat_groups 
-                  ORDER BY id ASC";
-                  
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id]);
-        
-        echo json_encode([
-            "success" => true, 
-            "groups" => $stmt->fetchAll()
-        ]);
-        exit;
-    }
-
-    // ================= STROGA PROVERA ZA NAPREDNE AKCIJE =================
     if (empty($username)) {
-        echo json_encode(["success" => false, "message" => "Korisnik je obavezan za ovu akciju!"]);
+        echo json_encode(["success" => false, "message" => "Korisnik je obavezan!"]);
         exit;
     }
 
@@ -54,7 +28,48 @@ try {
     $stmt->execute([$username]);
     $user_id = $stmt->fetchColumn();
     if (!$user_id) {
-        echo json_encode(["success" => false, "message" => "Korisnik ne postoji!"]);
+        echo json_encode(["success" => false, "message" => "Korisnik ne postoji!", "groups" => []]);
+        exit;
+    }
+
+    // --- 1. LISTA GRUPA U KOJIMA JE KORISNIK ČLAN + BROJ NEPROČITANIH PORUKA ---
+    if ($action === 'list') {
+        // Upit filtrira samo grupe gde je user_id u group_members (Isto kao na vebu!)
+        $query = "SELECT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
+                  FROM chat_groups cg
+                  JOIN group_members gm ON cg.id = gm.group_id
+                  WHERE gm.user_id = ?
+                  ORDER BY cg.id ASC";
+                  
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$user_id, $user_id]);
+        $groups = $stmt->fetchAll();
+
+        $outputGroups = [];
+        foreach ($groups as $group) {
+            // Računamo nepročitane poruke: poruke iz ove grupe koje nije poslao ovaj korisnik,
+            // a ne postoje u tabeli group_message_seen za ovog korisnika.
+            $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
+                            WHERE pm.group_id = ? AND pm.sender_id != ?
+                            AND pm.id NOT IN (
+                                SELECT message_id FROM group_message_seen WHERE user_id = ?
+                            )";
+            $unreadStmt = $pdo->prepare($unreadQuery);
+            $unreadStmt->execute([$group['id'], $user_id, $user_id]);
+            $unreadCount = (int)$unreadStmt->fetchColumn();
+
+            $outputGroups[] = [
+                "id" => $group['id'],
+                "name" => $group['name'],
+                "is_owner" => $group['is_owner'],
+                "unread_count" => $unreadCount
+            ];
+        }
+
+        echo json_encode([
+            "success" => true, 
+            "groups" => $outputGroups
+        ]);
         exit;
     }
 
@@ -67,7 +82,6 @@ try {
         }
 
         $pdo->beginTransaction();
-        // PROMENJENO: owner_id
         $stmt = $pdo->prepare("INSERT INTO chat_groups (name, owner_id) VALUES (?, ?)");
         $stmt->execute([$group_name, $user_id]);
         $group_id = $pdo->lastInsertId();
@@ -89,17 +103,16 @@ try {
         exit;
     }
 
-    // --- 4. BRISANJE GRUPE OD STRANE VLASNIKA ---
+    // --- 4. BRISANJE GRUPE ---
     if ($action === 'delete') {
         $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
         
-        // PROMENJENO: owner_id
         $stmt = $pdo->prepare("SELECT owner_id FROM chat_groups WHERE id = ?");
         $stmt->execute([$group_id]);
         $owner_id = $stmt->fetchColumn();
 
         if ($owner_id != $user_id) {
-            echo json_encode(["success" => false, "message" => "Nemate ovlašćenje da obrišete ovu grupu!"]);
+            echo json_encode(["success" => false, "message" => "Nemate ovlašćenje!"]);
             exit;
         }
 
@@ -109,32 +122,7 @@ try {
         $pdo->prepare("DELETE FROM chat_groups WHERE id = ?")->execute([$group_id]);
         $pdo->commit();
 
-        echo json_encode(["success" => true, "message" => "Grupa je trajno obrisana!"]);
-        exit;
-    }
-
-    // --- 5. PREGLED ČLANOVA GRUPE ---
-    if ($action === 'members') {
-        $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
-        
-        if ($group_id <= 0) {
-            echo json_encode(["success" => false, "message" => "Nevalidan ID grupe!"]);
-            exit;
-        }
-
-        $query = "SELECT u.username FROM users u 
-                  JOIN group_members gm ON u.id = gm.user_id 
-                  WHERE gm.group_id = ? 
-                  ORDER BY u.username ASC";
-                  
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([$group_id]);
-        $members = $stmt->fetchAll();
-
-        echo json_encode([
-            "success" => true,
-            "members" => $members
-        ]);
+        echo json_encode(["success" => true, "message" => "Grupa je obrisana!"]);
         exit;
     }
 
