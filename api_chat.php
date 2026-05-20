@@ -7,23 +7,22 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
-// Otvaramo nezavisnu konekciju da izbegnemo $_SESSION provere iz db_chatter.php
-$host = 'localhost';
-$db   = 'chatter_db';
-$user = 'chatter_user';      
-$pass = 'chatter_pass123';
-$charset = 'utf8mb4';
-
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
+    $pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "chatter_user", "chatter_pass123", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
     $group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 8;
 
-    // Povlačenje istorije poruka za KontraverzneBiznismene (ID: 8)
-    $stmt = $pdo->prepare("SELECT username, message, sent_at FROM private_messages WHERE group_id = ? ORDER BY sent_at ASC");
+    // Spajamo tabele preko JOIN-a da bismo Androidu poslali tekstualno korisnicko ime
+    $query = "SELECT u.username, pm.message, pm.created_at 
+              FROM private_messages pm 
+              JOIN users u ON pm.sender_id = u.id 
+              WHERE pm.group_id = ? 
+              ORDER BY pm.created_at ASC";
+
+    $stmt = $pdo->prepare($query);
     $stmt->execute([$group_id]);
     $rows = $stmt->fetchAll();
 
@@ -32,7 +31,7 @@ try {
         $messages[] = [
             "username" => $row['username'],
             "message" => $row['message'],
-            "sent_at" => $row['sent_at']
+            "sent_at" => $row['created_at'] // Mapiramo created_at u sent_at za Android
         ];
     }
 
@@ -42,12 +41,8 @@ try {
     ]);
     exit;
 
-} catch (PDOException $e) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Greška sa bazom: " . $e->getMessage(),
-        "messages" => []
-    ]);
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "messages" => [], "error" => $e->getMessage()]);
     exit;
 }
 ?>
