@@ -7,7 +7,6 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
-// Direktno povezivanje na bazu preko PDO drajvera
 $host = 'localhost';
 $db   = 'chatter_db';
 $user = 'root';
@@ -27,6 +26,8 @@ try {
         $inputData = $_POST;
     }
 
+    // Hvata se 'action' parametar koji šalje Android (login ili register)
+    $action   = isset($inputData['action']) ? trim($inputData['action']) : 'login';
     $username = isset($inputData['username']) ? trim($inputData['username']) : '';
     $password = isset($inputData['password']) ? trim($inputData['password']) : '';
 
@@ -38,14 +39,46 @@ try {
         exit;
     }
 
-    // Provera korisnika u tabeli users
-    $stmt = $pdo->prepare("SELECT id, password FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $userRow = $stmt->fetch();
+    // ================= LOGIKA ZA REGISTRACIJU =================
+    if ($action === 'register') {
+        // Provera da li korisnik već postoji
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        if ($stmt->fetchColumn() > 0) {
+            echo json_encode([
+                "success" => false,
+                "message" => "Greška! Ime zauzeto."
+            ]);
+            exit;
+        }
 
-    if ($userRow) {
-        // Upoređivanje lozinke sa hesiranom lozinkom iz baze
-        if (password_verify($password, $userRow['password'])) {
+        // Hesiranje lozinke i upis novog naloga
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, created_at) VALUES (?, ?, NOW())");
+        
+        if ($stmt->execute([$username, $hashedPassword])) {
+            echo json_encode([
+                "success" => true,
+                "status" => "success",
+                "message" => "Uspešna registracija!",
+                "username" => $username
+            ]);
+        } else {
+            echo json_encode([
+                "success" => false,
+                "message" => "Greška na serveru pri upisu."
+            ]);
+        }
+        exit;
+    }
+
+    // ================= LOGIKA ZA PRIJAVU (LOGIN) =================
+    if ($action === 'login') {
+        $stmt = $pdo->prepare("SELECT id, password FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        $userRow = $stmt->fetch();
+
+        if ($userRow && password_verify($password, $userRow['password'])) {
             echo json_encode([
                 "success" => true,
                 "status" => "success",
@@ -54,13 +87,13 @@ try {
             ]);
             exit;
         }
-    }
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Pogrešno korisničko ime ili lozinka."
-    ]);
-    exit;
+        echo json_encode([
+            "success" => false,
+            "message" => "Pogrešno korisničko ime ili lozinka."
+        ]);
+        exit;
+    }
 
 } catch (PDOException $e) {
     echo json_encode([
