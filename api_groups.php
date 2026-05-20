@@ -13,56 +13,33 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // --- NAJROBUSNIJI PARSER: ČITA DIREKTNO IZ URL STRINGA AKO JE SVE OSTALO PRAZNO ---
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
-
-    // Ako je ruter obrisao nizove, ručno čitamo sirovi QUERY string sa servera
-    if (empty($inputData) && !empty($_SERVER['QUERY_STRING'])) {
-        parse_str($_SERVER['QUERY_STRING'], $inputData);
-    }
 
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
     $username = isset($inputData['username']) ? trim($inputData['username']) : '';
 
-    if (empty($username)) {
-        echo json_encode([
-            "success" => false, 
-            "message" => "Korisnik je obavezan!", 
-            "groups" => [],
-            "debug_server_query" => $_SERVER['QUERY_STRING'] // Pokazuje šta je stvarno stiglo u URL-u
-        ]);
-        exit;
-    }
-
-    // Pronalazimo ID korisnika iz baze
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user_id = $stmt->fetchColumn();
-    
-    if (!$user_id) {
-        echo json_encode([
-            "success" => false, 
-            "message" => "Korisnik '$username' ne postoji u bazi!", 
-            "groups" => []
-        ]);
-        exit;
-    }
-
-    // ================= 1. LISTA SAMO TVOJIH GRUPA + BROJAČ PORUKA =================
+    // Ako nemamo korisnika, vraćamo sve grupe bez filtriranja vlasništva (da ne puca polling)
     if ($action === 'list') {
-        $query = "SELECT DISTINCT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
-                  FROM chat_groups cg
-                  LEFT JOIN group_members gm ON cg.id = gm.group_id
-                  WHERE cg.owner_id = ? OR gm.user_id = ?
-                  ORDER BY cg.id ASC";
+        $user_id = 0;
+        if (!empty($username)) {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user_id = $stmt->fetchColumn() ?: 0;
+        }
+
+        // VRAĆAMO ČIST UPIT KOJI JE MALOPRE RADIJO, ali sa pogođenom owner_id kolonom
+        $query = "SELECT id, name, owner_id, (owner_id = ?) as is_owner 
+                  FROM chat_groups 
+                  ORDER BY id ASC";
                   
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id, $user_id, $user_id]);
+        $stmt->execute([$user_id]);
         $groups = $stmt->fetchAll();
 
         $outputGroups = [];
         foreach ($groups as $group) {
+            // Računamo nepročitane poruke
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND pm.id NOT IN (
@@ -75,7 +52,6 @@ try {
             $outputGroups[] = [
                 "id" => (int)$group['id'],
                 "name" => $group['name'],
-                "owner_id" => (int)$group['owner_id'],
                 "is_owner" => (bool)$group['is_owner'],
                 "unread_count" => $unreadCount
             ];
@@ -88,6 +64,16 @@ try {
         exit;
     }
 
+    // Provera za ostale akcije gde je korisnik obavezan
+    if (empty($username)) {
+        echo json_encode(["success" => false, "message" => "Korisnik je obavezan!"]);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $user_id = $stmt->fetchColumn();
+
     // --- 2. KREIRANJE NOVE GRUPE ---
     if ($action === 'create') {
         $group_name = isset($inputData['group_name']) ? trim($inputData['group_name']) : '';
@@ -95,17 +81,14 @@ try {
             echo json_encode(["success" => false, "message" => "Ime grupe je obavezno!"]);
             exit;
         }
-
         $pdo->beginTransaction();
         $stmt = $pdo->prepare("INSERT INTO chat_groups (name, owner_id) VALUES (?, ?)");
         $stmt->execute([$group_name, $user_id]);
         $group_id = $pdo->lastInsertId();
-
         $stmt = $pdo->prepare("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)");
         $stmt->execute([$group_id, $user_id]);
-        
         $pdo->commit();
-        echo json_encode(["success" => true, "message" => "Grupa uspešno kreirana!"]);
+        echo json_encode(["success" => true, "message" => "Grupa kreirana!"]);
         exit;
     }
 
@@ -121,38 +104,18 @@ try {
     // --- 4. BRISANJE GRUPE ---
     if ($action === 'delete') {
         $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
-        
         $stmt = $pdo->prepare("SELECT owner_id FROM chat_groups WHERE id = ?");
         $stmt->execute([$group_id]);
-        $owner_id = $stmt->fetchColumn();
-
-        if ($owner_id != $user_id) {
-            echo json_encode(["success" => false, "message" => "Nemate ovlašćenje da obrišete ovu grupu!"]);
+        if ($stmt->fetchColumn() != $user_id) {
+            echo json_encode(["success" => false, "message" => "Nemate ovlašćenje!"]);
             exit;
         }
-
         $pdo->beginTransaction();
         $pdo->prepare("DELETE FROM group_members WHERE group_id = ?")->execute([$group_id]);
         $pdo->prepare("DELETE FROM private_messages WHERE group_id = ?")->execute([$group_id]);
         $pdo->prepare("DELETE FROM chat_groups WHERE id = ?")->execute([$group_id]);
         $pdo->commit();
-
-        echo json_encode(["success" => true, "message" => "Grupa je trajno obrisana!"]);
-        exit;
-    }
-
-    // --- 5. PREGLED ČLANOVA GRUPE ---
-    if ($action === 'members') {
-        $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
-        
-        $query = "SELECT u.username FROM users u 
-                  JOIN group_members gm ON u.id = gm.user_id 
-                  WHERE gm.group_id = ? 
-                  ORDER BY u.username ASC";
-                  
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([$group_id]);
-        echo json_encode(["success" => true, "members" => $stmt->fetchAll()]);
+        echo json_encode(["success" => true, "message" => "Grupa obrisana!"]);
         exit;
     }
 
