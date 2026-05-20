@@ -7,25 +7,25 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
-// Uvozimo tvoju pdo konekciju
-require_once 'db_chatter.php';
-
-if (!isset($pdo)) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Greška: PDO konekcija (\$pdo) nije pronađena!",
-        "messages" => []
-    ]);
-    exit;
-}
-
-$group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 8;
+// Direktno definišemo parametre baze da zaobiđemo web sesije iz db_chatter.php
+$host = 'localhost';
+$db   = 'chatter_db';
+$user = 'root';
+$pass = '';
+$charset = 'utf8mb4';
 
 try {
-    // Koristimo PDO pripremu i izvršavanje upita
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+
+    $group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 8;
+
+    // Povlačimo podatke preko ispravnog PDO drajvera
     $stmt = $pdo->prepare("SELECT username, message, sent_at FROM private_messages WHERE group_id = ? ORDER BY sent_at ASC");
     $stmt->execute([$group_id]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $stmt->fetchAll();
 
     $messages = [];
     foreach ($rows as $row) {
@@ -42,10 +42,10 @@ try {
     ]);
     exit;
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
     echo json_encode([
         "success" => false,
-        "error" => $e->getMessage(),
+        "message" => "Baza nedostupna: " . $e->getMessage(),
         "messages" => []
     ]);
     exit;
