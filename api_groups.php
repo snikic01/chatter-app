@@ -39,11 +39,13 @@ try {
     }
 
     // ================= 1. LISTA SAMO GRUPA GDE SI ČLAN =================
+        // ================= 1. LISTA GRUPA SA IMENOM VLASNIKA =================
     if ($action === 'list') {
-        // Menjamo LEFT JOIN u INNER JOIN. Grupa prolazi samo ako tvoj user_id postoji u group_members!
-        $query = "SELECT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
+        // DODATO: Spajamo i tabelu users (u2) preko owner_id da izvučemo tekstualno ime vlasnika grupe
+        $query = "SELECT cg.id, cg.name, cg.owner_id, u2.username as owner_name, (cg.owner_id = ?) as is_owner 
                   FROM chat_groups cg
                   INNER JOIN group_members gm ON cg.id = gm.group_id
+                  JOIN users u2 ON cg.owner_id = u2.id
                   WHERE gm.user_id = ?
                   ORDER BY cg.id ASC";
                   
@@ -53,7 +55,6 @@ try {
 
         $outputGroups = [];
         foreach ($groups as $group) {
-            // Računamo nepročitane poruke preko NOT EXISTS (imuno na NULL)
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND NOT EXISTS (
@@ -67,18 +68,16 @@ try {
             $outputGroups[] = [
                 "id" => (int)$group['id'],
                 "name" => $group['name'],
-                // POPRAVLJENO MAPIRANJE: Vraćamo fiksni broj 1 ili 0 da Android optInt/optBoolean to pročita bez greške!
+                "owner_name" => $group['owner_name'], // Šaljemo ime vlasnika na telefon
                 "is_owner" => $group['is_owner'] ? 1 : 0, 
                 "unread_count" => $unreadCount
             ];
         }
 
-        echo json_encode([
-            "success" => true, 
-            "groups" => $outputGroups
-        ]);
+        echo json_encode(["success" => true, "groups" => $outputGroups]);
         exit;
     }
+
 
     // ================= SVE NAPREDNE AKCIJE (KREIRANJE, BRISANJE, LEAVE) =================
 
