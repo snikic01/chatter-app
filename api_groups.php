@@ -101,6 +101,32 @@ try {
         exit;
     }
 
+    // --- 5. PREGLED ČLANOVA GRUPE (NOVA FUNKCIJA ZA ANDROID) ---
+    if ($action === 'members') {
+        $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
+        
+        if ($group_id <= 0) {
+            echo json_encode(["success" => false, "message" => "Nevalidan ID grupe!"]);
+            exit;
+        }
+
+        // Spajamo tabele group_members i users da bismo dobili imena korisnika
+        $query = "SELECT u.username FROM users u 
+                  JOIN group_members gm ON u.id = gm.user_id 
+                  WHERE gm.group_id = ? 
+                  ORDER BY u.username ASC";
+                  
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$group_id]);
+        $members = $stmt->fetchAll();
+
+        echo json_encode([
+            "success" => true,
+            "members" => $members
+        ]);
+        exit;
+    }
+
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
