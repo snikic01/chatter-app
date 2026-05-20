@@ -10,8 +10,8 @@ error_reporting(0);
 // Otvaramo nezavisnu konekciju da izbegnemo $_SESSION provere iz db_chatter.php
 $host = 'localhost';
 $db   = 'chatter_db';
-$user = 'root';
-$pass = '';
+$user = 'chatter_user';      
+$pass = 'chatter_pass123';
 $charset = 'utf8mb4';
 
 try {

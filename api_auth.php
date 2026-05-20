@@ -13,8 +13,8 @@ error_reporting(0);
 
 $host = 'localhost';
 $db   = 'chatter_db';
-$user = 'root';
-$pass = '';
+$user = 'chatter_user';      
+$pass = 'chatter_pass123';
 $charset = 'utf8mb4';
 
 try {
