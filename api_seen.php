@@ -14,18 +14,17 @@ try {
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
-    $action   = isset($inputData['action']) ? trim($inputData['action']) : 'mark';
-    $username = isset($inputData['username']) ? trim($inputData['username']) : '';
+        $action   = isset($inputData['action']) ? trim($inputData['action']) : 'mark';
     $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
-
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user_id = $stmt->fetchColumn();
+    
+    // POPRAVLJENO: Čitamo direktno prosleđeni ID
+    $user_id  = isset($inputData['user_id']) ? intval($inputData['user_id']) : 0;
 
     if (!$user_id || !$group_id) {
         echo json_encode(["success" => false, "message" => "Nevalidni podaci!"]);
         exit;
     }
+
 
     // --- 1. OZNAČI SVE PORUKE U GRUPI KAO SEEN ---
     if ($action === 'mark') {
