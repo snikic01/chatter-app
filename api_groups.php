@@ -38,19 +38,22 @@ try {
         exit;
     }
 
-    // ================= 1. LISTA SVIH GRUPA (Identično kao na veb sajtu) =================
+        // ================= 1. LISTA TVOJIH GRUPA (Prikazuje samo grupe gde si vlasnik ILI član) =================
     if ($action === 'list') {
-        $query = "SELECT id, name, owner_id, (owner_id = ?) as is_owner 
-                  FROM chat_groups 
-                  ORDER BY id ASC";
+        // PROMENJENO: Koristimo LEFT JOIN sa strogo definisanim WHERE uslovom za filtriranje članstva i vlasništva
+        $query = "SELECT DISTINCT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
+                  FROM chat_groups cg
+                  LEFT JOIN group_members gm ON cg.id = gm.group_id
+                  WHERE cg.owner_id = ? OR gm.user_id = ?
+                  ORDER BY cg.id ASC";
                   
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id]);
+        $stmt->execute([$user_id, $user_id, $user_id]);
         $groups = $stmt->fetchAll();
 
         $outputGroups = [];
         foreach ($groups as $group) {
-            // Bezbedno računamo broj nepročitanih poruka preko NOT EXISTS (imuno na NULL vrednosti u bazi)
+            // Računamo nepročitane poruke preko NOT EXISTS (imuno na NULL)
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND NOT EXISTS (
@@ -69,9 +72,13 @@ try {
             ];
         }
 
-        echo json_encode(["success" => true, "groups" => $outputGroups]);
+        echo json_encode([
+            "success" => true, 
+            "groups" => $outputGroups
+        ]);
         exit;
     }
+
 
     // ================= SVE NAPREDNE AKCIJE (KREIRANJE, BRISANJE, LEAVE) =================
 
