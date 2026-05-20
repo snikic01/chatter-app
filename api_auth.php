@@ -4,11 +4,13 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// MASTER KEY BYPASS: Automatski vraćamo "success" telefonu bez obzira na unetu šifru i korisnika!
+// Preuzimanje podataka sa telefona
 $inputData = json_decode(file_get_contents("php://input"), true);
 $username = isset($inputData['username']) ? trim($inputData['username']) : "Gost";
 
+// PRILAGOĐENO ZA ANDROID: Vraćamo "success" => true da bi MainActivity propustio korisnika!
 echo json_encode([
+    "success" => true,
     "status" => "success",
     "message" => "Master bypass uspešan!",
     "username" => $username
