@@ -13,7 +13,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // UNIVERZALNI PARSER: Čita i JSON body i GET/POST parametre čak i ako ih ruter sakrije
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
@@ -25,35 +24,32 @@ try {
     $username = isset($inputData['username']) ? trim($inputData['username']) : '';
     $user_id  = isset($inputData['user_id']) ? intval($inputData['user_id']) : 0;
 
-    // Ako je telefon poslao username, a nemamo user_id, saznaćemo ga bezbedno
     if ($user_id <= 0 && !empty($username)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $user_id = $stmt->fetchColumn() ?: 0;
     }
 
-    // Stroga provera: Ako nemamo nikakav parametar korisnika, tek tada prekidamo skriptu
     if ($user_id <= 0) {
         echo json_encode(["success" => false, "message" => "User ID ili Korisnik je obavezan!", "groups" => []]);
         exit;
     }
 
-        // ================= 1. LISTA TVOJIH GRUPA (Prikazuje samo grupe gde si vlasnik ILI član) =================
+    // ================= 1. LISTA SAMO GRUPA GDE SI ČLAN (Očišćen uslov vlasništva) =================
     if ($action === 'list') {
-        // PROMENJENO: Koristimo LEFT JOIN sa strogo definisanim WHERE uslovom za filtriranje članstva i vlasništva
-        $query = "SELECT DISTINCT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
+        // PROMENJENO: Menjamo LEFT JOIN u INNER JOIN. Grupa prolazi samo ako tvoj user_id (5) postoji u group_members!
+        $query = "SELECT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
                   FROM chat_groups cg
-                  LEFT JOIN group_members gm ON cg.id = gm.group_id
-                  WHERE cg.owner_id = ? OR gm.user_id = ?
+                  INNER JOIN group_members gm ON cg.id = gm.group_id
+                  WHERE gm.user_id = ?
                   ORDER BY cg.id ASC";
                   
         $stmt = $pdo->prepare($query);
-        $stmt->execute([$user_id, $user_id, $user_id]);
+        $stmt->execute([$user_id, $user_id]);
         $groups = $stmt->fetchAll();
 
         $outputGroups = [];
         foreach ($groups as $group) {
-            // Računamo nepročitane poruke preko NOT EXISTS (imuno na NULL)
             $unreadQuery = "SELECT COUNT(*) FROM private_messages pm
                             WHERE pm.group_id = ? AND pm.sender_id != ?
                             AND NOT EXISTS (
@@ -79,10 +75,8 @@ try {
         exit;
     }
 
+    // ================= SVE NAPREDNE AKCIJE =================
 
-    // ================= SVE NAPREDNE AKCIJE (KREIRANJE, BRISANJE, LEAVE) =================
-
-    // --- 2. KREIRANJE NOVE GRUPE ---
     if ($action === 'create') {
         $group_name = isset($inputData['group_name']) ? trim($inputData['group_name']) : '';
         if (empty($group_name)) {
@@ -101,7 +95,6 @@ try {
         exit;
     }
 
-    // --- 3. NAPUŠTANJE GRUPE ---
     if ($action === 'leave') {
         $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
         $stmt = $pdo->prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ?");
@@ -110,7 +103,6 @@ try {
         exit;
     }
 
-    // --- 4. BRISANJE GRUPE OD STRANE VLASNIKA ---
     if ($action === 'delete') {
         $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
         
