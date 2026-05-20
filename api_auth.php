@@ -7,6 +7,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
+// Direktno povezivanje na bazu preko PDO drajvera
 $host = 'localhost';
 $db   = 'chatter_db';
 $user = 'root';
@@ -14,30 +15,50 @@ $pass = '';
 $charset = 'utf8mb4';
 
 try {
-    // Direktna PDO konekcija za API koja radi nezavisno od veb sesija
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Otpornije čitanje sirovog JSON unosa sa telefona
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true);
 
-    // Ako je JSON prazan zbog proxy preusmerenja, vučemo iz klasičnog $_POST niza
     if (empty($inputData)) {
         $inputData = $_POST;
     }
 
-    $username = isset($inputData['username']) ? trim($inputData['username']) : 'Gost';
-    $action = isset($inputData['action']) ? trim($inputData['action']) : 'login';
+    $username = isset($inputData['username']) ? trim($inputData['username']) : '';
+    $password = isset($inputData['password']) ? trim($inputData['password']) : '';
 
-    // MASTER BYPASS: Automatski vraćamo "success" => true da bi Android propustio korisnika
+    if (empty($username) || empty($password)) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Sva polja su obavezna!"
+        ]);
+        exit;
+    }
+
+    // Provera korisnika u tabeli users
+    $stmt = $pdo->prepare("SELECT id, password FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $userRow = $stmt->fetch();
+
+    if ($userRow) {
+        // Upoređivanje lozinke sa hesiranom lozinkom iz baze
+        if (password_verify($password, $userRow['password'])) {
+            echo json_encode([
+                "success" => true,
+                "status" => "success",
+                "message" => "Uspešna prijava!",
+                "username" => $username
+            ]);
+            exit;
+        }
+    }
+
     echo json_encode([
-        "success" => true,
-        "status" => "success",
-        "message" => "Master bypass uspešan!",
-        "username" => $username
+        "success" => false,
+        "message" => "Pogrešno korisničko ime ili lozinka."
     ]);
     exit;
 
