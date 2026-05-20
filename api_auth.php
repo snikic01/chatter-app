@@ -1,47 +1,90 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST");
+header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Isključujemo ispisivanje HTML grešaka (da ne pokvare JSON)
 ini_set('display_errors', 0);
+require_once 'db_chatter.php'; // Koristi tvoju postojeću konekciju $conn
 
-// Povezivanje na bazu (uveri se da je putanja do db_chatter.php tačna)
-require_once 'db_chatter.php';
+$inputData = json_decode(file_get_contents("php://input"), true);
+$action = isset($inputData['action']) ? trim($inputData['action']) : '';
+$username = isset($inputData['username']) ? trim($inputData['username']) : '';
+$password = isset($inputData['password']) ? trim($inputData['password']) : '';
 
-$group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 8;
-
-try {
-    // Uzimamo poruke iz tabele private_messages za grupu 8
-    $query = "SELECT username, message, sent_at FROM private_messages WHERE group_id = ? ORDER BY sent_at ASC";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $group_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $messages = [];
-    while ($row = $result->fetch_assoc()) {
-        $messages[] = [
-            "username" => $row['username'],
-            "message" => $row['message'],
-            "sent_at" => $row['sent_at']
-        ];
-    }
-
-    // Šaljemo čist JSON nazad u Android
-    echo json_encode([
-        "success" => true,
-        "messages" => $messages
-    ]);
-    exit;
-
-} catch (Exception $e) {
+if (empty($action) || empty($username) || empty($password)) {
     echo json_encode([
         "success" => false,
-        "messages" => [],
-        "error" => $e->getMessage()
+        "message" => "Sva polja su obavezna!"
     ]);
     exit;
 }
+
+if ($action === 'register') {
+    // Provera da li ime već postoji
+    $checkQuery = "SELECT id FROM users WHERE username = ?";
+    $stmt = $conn->prepare($checkQuery);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Greška! Ime zauzeto."
+        ]);
+        exit;
+    }
+
+    // Registracija: Hesiranje lozinke
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    $insertQuery = "INSERT INTO users (username, password, created_at) VALUES (?, ?, NOW())";
+    $stmt = $conn->get_result(); // ako zatreba, zavisi od drajvera, ali prepare je sigurniji:
+    $stmt = $conn->prepare($insertQuery);
+    $stmt->bind_param("ss", $username, $hashedPassword);
+    
+    if ($stmt->execute()) {
+        echo json_encode([
+            "success" => true,
+            "message" => "Uspešna registracija!"
+        ]);
+    } else {
+        echo json_encode([
+            "success" => false,
+            "message" => "Greška na serveru pri upisu."
+        ]);
+    }
+    exit;
+
+} elseif ($action === 'login') {
+    // Prijava korisnika
+    $query = "SELECT password FROM users WHERE username = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        // Provera hesirane lozinke
+        if (password_verify($password, $user['password'])) {
+            echo json_encode([
+                "success" => true,
+                "message" => "Uspešan login!",
+                "username" => $username
+            ]);
+            exit;
+        }
+    }
+
+    echo json_encode([
+        "success" => false,
+        "message" => "Pogrešna šifra ili korisnik."
+    ]);
+    exit;
+}
+
+echo json_encode([
+    "success" => false,
+    "message" => "Nepoznata akcija."
+]);
+exit;
 ?>
