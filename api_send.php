@@ -1,57 +1,51 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-$host = 'localhost';
-$db   = 'chatter_db';
-$user = 'nikic_admin';
-$pass = 'lozinka123';
-$charset = 'utf8mb4';
+ini_set('display_errors', 0);
+require_once 'db_chatter.php';
 
-try {
-    $dbConnection = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-} catch (PDOException $e) {
-    echo json_encode(["status" => "error", "message" => "Baza nedostupna."]);
-    exit;
-}
-
+// Čitamo JSON podatke koje je poslao Ktor klijent sa Samsunga
 $inputData = json_decode(file_get_contents("php://input"), true);
-$username = $inputData['username'] ?? null;
-$message = $inputData['message'] ?? null;
 
-if (!$username || !$message || trim($message) == '') {
-    echo json_encode(["status" => "error", "message" => "Fale parametri ili je poruka prazna."]);
+$group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 8;
+$username = isset($inputData['username']) ? trim($inputData['username']) : '';
+$message  = isset($inputData['message']) ? trim($inputData['message']) : '';
+
+if (empty($username) || empty($message)) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Korisničko ime ili poruka ne smeju biti prazni!"
+    ]);
     exit;
 }
 
 try {
-    // 1. Dinamički saznajemo ID korisnika na osnovu imena sa telefona
-    $stmt = $dbConnection->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
-    $stmt->execute([trim($username)]);
-    $userId = $stmt->fetchColumn();
-
-    if (!$userId) {
-        echo json_encode(["status" => "error", "message" => "Korisnik nije pronađen u bazi."]);
-        exit;
+    // Upisujemo poruku u tvoju private_messages tabelu
+    $query = "INSERT INTO private_messages (group_id, username, message, sent_at) VALUES (?, ?, ?, NOW())";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iss", $group_id, $username, $message);
+    
+    if ($stmt->execute()) {
+        echo json_encode([
+            "success" => true,
+            "status" => "success"
+        ]);
+    } else {
+        echo json_encode([
+            "success" => false,
+            "message" => "Greška prilikom upisa u bazu."
+        ]);
     }
-
-    $messageClean = trim($message);
-
-    // 2. Upisujemo poruku pod pravim ID-jem u grupu 8
-    $ins = $dbConnection->prepare("INSERT INTO private_messages (sender_id, receiver_id, group_id, message) VALUES (?, NULL, 8, ?)");
-    $ins->execute([$userId, $messageClean]);
-
-    echo json_encode(["status" => "success", "message" => "Upisano!"]);
+    exit;
 
 } catch (Exception $e) {
-    echo json_encode(["status" => "error", "message" => "SQL Greška: " . $e->getMessage()]);
+    echo json_encode([
+        "success" => false,
+        "error" => $e->getMessage()
+    ]);
+    exit;
 }
 ?>
