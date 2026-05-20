@@ -38,9 +38,9 @@ try {
         exit;
     }
 
-    // ================= 1. LISTA TVOJIH GRUPA (Prikazuje samo grupe gde si član) =================
+    // ================= 1. LISTA SAMO GRUPA GDE SI ČLAN =================
     if ($action === 'list') {
-        // Menjamo LEFT JOIN u INNER JOIN. Grupa prolazi samo ako tvoj user_id (5) postoji u group_members!
+        // Menjamo LEFT JOIN u INNER JOIN. Grupa prolazi samo ako tvoj user_id postoji u group_members!
         $query = "SELECT cg.id, cg.name, cg.owner_id, (cg.owner_id = ?) as is_owner 
                   FROM chat_groups cg
                   INNER JOIN group_members gm ON cg.id = gm.group_id
@@ -67,7 +67,8 @@ try {
             $outputGroups[] = [
                 "id" => (int)$group['id'],
                 "name" => $group['name'],
-                "is_owner" => (bool)$group['is_owner'],
+                // POPRAVLJENO MAPIRANJE: Vraćamo fiksni broj 1 ili 0 da Android optInt/optBoolean to pročita bez greške!
+                "is_owner" => $group['is_owner'] ? 1 : 0, 
                 "unread_count" => $unreadCount
             ];
         }
@@ -117,8 +118,8 @@ try {
 
         // 3. Ako je korisnik koji izlazi zapravo bio vlasnik te grupe, vršimo nasleđivanje
         if ($current_owner === $user_id) {
-            // Tražimo sledećeg najstarijeg člana koji je najduže u grupi (prvi sledeći po auto-increment id-ju u group_members)
-            $stmt = $pdo->prepare("SELECT user_id FROM group_members WHERE group_id = ? ORDER BY id ASC LIMIT 1");
+            // POPRAVLJENO: Sortiramo po user_id jer kolona id ne postoji u group_members tabeli!
+            $stmt = $pdo->prepare("SELECT user_id FROM group_members WHERE group_id = ? ORDER BY user_id ASC LIMIT 1");
             $stmt->execute([$group_id]);
             $next_owner = $stmt->fetchColumn();
 
@@ -127,7 +128,7 @@ try {
                 $stmt = $pdo->prepare("UPDATE chat_groups SET owner_id = ? WHERE id = ?");
                 $stmt->execute([$next_owner, $group_id]);
             } else {
-                // Ako u grupi više nema niti jednog jedinog člana, trajno brišemo i grupu i njene poruke da ne guše bazu
+                // Ako u grupi više nema niti jednog jedinog člana, trajno brišemo i grupu i njene poruke
                 $pdo->prepare("DELETE FROM private_messages WHERE group_id = ?")->execute([$group_id]);
                 $pdo->prepare("DELETE FROM chat_groups WHERE id = ?")->execute([$group_id]);
             }
