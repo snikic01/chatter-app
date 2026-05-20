@@ -7,9 +7,18 @@ header("Access-Control-Allow-Headers: Content-Type");
 ini_set('display_errors', 0);
 error_reporting(0);
 
-require_once 'db_chatter.php';
+// Direktna konekcija za API
+$pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "root", "", [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+]);
 
-$inputData = json_decode(file_get_contents("php://input"), true);
+// Otporniji način čitanja JSON podataka sa Androida
+$rawInput = file_get_contents("php://input");
+$inputData = json_decode($rawInput, true);
+
+if (empty($inputData)) {
+    $inputData = $_POST;
+}
 
 $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 8;
 $username = isset($inputData['username']) ? trim($inputData['username']) : '';
@@ -25,7 +34,6 @@ if (empty($username) || empty($message)) {
 
 try {
     $stmt = $pdo->prepare("INSERT INTO private_messages (group_id, username, message, sent_at) VALUES (?, ?, ?, NOW())");
-    
     if ($stmt->execute([$group_id, $username, $message])) {
         echo json_encode([
             "success" => true,
@@ -35,11 +43,10 @@ try {
     } else {
         echo json_encode([
             "success" => false,
-            "message" => "Greška pri upisu u bazu."
+            "message" => "Greška pri upisu."
         ]);
     }
     exit;
-
 } catch (Exception $e) {
     echo json_encode([
         "success" => false,
