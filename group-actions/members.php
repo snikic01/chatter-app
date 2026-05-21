@@ -1,31 +1,42 @@
 <?php
-// group-actions/members.php
+// group-actions/add_member.php
 
-$group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
+$group_id    = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
+$new_member  = isset($inputData['new_member_username']) ? trim($inputData['new_member_username']) : '';
 
-if ($group_id <= 0) {
-    echo json_encode(["success" => false, "message" => "Group ID je obavezan!"]);
+if ($group_id <= 0 || empty($new_member)) {
+    echo json_encode(["success" => false, "message" => "Nevalidni podaci za dodavanje!"]);
     exit;
 }
 
-// POPRAVLJENO: Druga grana sada preskače vlasnika grupe pomoću podupita, sprečavajući dupliranje!
-$query = "SELECT CAST(u.id AS CHAR) as id, u.username, 1 AS is_owner 
-          FROM users u 
-          JOIN chat_groups g ON u.id = g.owner_id 
-          WHERE g.id = ?
-          
-          UNION 
-          
-          SELECT CAST(u.id AS CHAR) as id, u.username, 0 AS is_owner 
-          FROM users u 
-          JOIN group_members gm ON u.id = gm.user_id 
-          WHERE gm.group_id = ? 
-          AND gm.user_id != (SELECT owner_id FROM chat_groups WHERE id = ?)";
+// 1. Proveravamo da li korisnik koji šalje zahtev uopšte ima prava (opciono, ali bezbedno)
+// Možeš dodati proveru vlasnika ako želiš da samo gazda dodaje ljude, ali za sada dozvoljavamo svima
 
-$stmt = $pdo->prepare($query);
-// Važno: Sada imamo 3 znaka pitanja, pa ID grupe prosleđujemo tri puta u execute!
-$stmt->execute([$group_id, $group_id, $group_id]);
-$members = $stmt->fetchAll();
+// 2. Saznajemo ID korisnika kog želimo da dodamo na osnovu njegovog username-a
+$userStmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+$userStmt->execute([$new_member]);
+$new_user_row = $userStmt->fetch();
 
-echo json_encode(["success" => true, "members" => $members]);
+if (!$new_user_row) {
+    echo json_encode(["success" => false, "message" => "Korisnik sa tim imenom ne postoji!"]);
+    exit;
+}
+
+$new_user_id = intval($new_user_row['id']);
+
+// 3. Proveravamo da li je taj korisnik već član te grupe da ne dupliramo redove
+$checkStmt = $pdo->prepare("SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?");
+$checkStmt->execute([$group_id, $new_user_id]);
+if ($checkStmt->fetch()) {
+    echo json_encode(["success" => false, "message" => "Korisnik je već član ove grupe!"]);
+    exit;
+}
+
+// 4. Ubacujemo novog člana u grupu
+$insertStmt = $pdo->prepare("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)");
+if ($insertStmt->execute([$group_id, $new_user_id])) {
+    echo json_encode(["success" => true, "message" => "Korisnik uspešno dodat!"]);
+} else {
+    echo json_encode(["success" => false, "message" => "Greška pri upisu u bazu!"]);
+}
 exit;
