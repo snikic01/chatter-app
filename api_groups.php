@@ -59,10 +59,15 @@ try {
         case 'kick':
             require_once "group-actions/kick.php";
             break;
+        // CASE GRANUA ZA DODAVANJE:
+        case 'add':
+            require_once "group-actions/add_member.php";
+            break;
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata akcija!"]);
             exit;
     }
+
 
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
