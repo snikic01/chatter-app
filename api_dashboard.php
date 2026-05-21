@@ -26,6 +26,9 @@ try {
     $post_id      = isset($inputData['post_id']) ? intval($inputData['post_id']) : 0;
     $comment_id   = isset($inputData['comment_id']) ? intval($inputData['comment_id']) : 0;
     $comment_text = isset($inputData['comment_text']) ? trim($inputData['comment_text']) : '';
+    $title        = isset($inputData['title']) ? trim($inputData['title']) : '';
+    $content      = isset($inputData['content']) ? trim($inputData['content']) : '';
+    $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : 'standard';
 
     if ($user_id <= 0 && !empty($username)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
@@ -78,7 +81,10 @@ try {
                 echo json_encode(["success" => false, "message" => "Nemate administratorska prava!"]);
                 exit;
             }
-            case 'post_add':
+            require_once "dashboard-actions/view_admin_logs.php";
+            break;
+
+        case 'post_add':
             // Kreiranje nove objave (Samo snikic01 / admin)
             if ($username !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za kreiranje objava!"]);
