@@ -41,16 +41,16 @@ try {
     // Rutiranje
     switch ($action) {
         case 'list':
-            require_once "friend-actions/list_friends.php";
+            require_once "friends-actions/list_friends.php";
             break;
         case 'add':
-            require_once "friend-actions/add_friend.php";
+            require_once "friends-actions/add_friend.php";
             break;
         case 'accept':
-            require_once "friend-actions/accept_friend.php";
+            require_once "friends-actions/accept_friend.php";
             break;
         case 'unfriend':
-            require_once "friend-actions/unfriend.php";
+            require_once "friends-actions/unfriend.php";
             break;
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata akcija!"]);
