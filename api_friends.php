@@ -52,6 +52,10 @@ try {
         case 'unfriend':
             require_once "friends-actions/unfriend.php";
             break;
+        case 'suggestions':
+            require_once "friends-actions/suggestions.php";
+            break;
+
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata akcija!"]);
             exit;
