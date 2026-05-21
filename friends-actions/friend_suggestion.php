@@ -1,8 +1,8 @@
 <?php
-// friend-actions/suggestions.php
+// friends-actions/friend_suggestion.php
 
-// Tražimo do 5 registrovanih korisnika koji nisu trenutno ulogovani 
-// i uopšte ne postoje u tvojoj tabeli friends (ni kao pending, ni kao accepted)
+// Tražimo korisnike koji nisu trenutno ulogovani
+// i koji uopšte ne postoje u tabeli friends sa tvojim ID-jem (ni kao pending, ni kao accepted)
 $query = "SELECT u.id, u.username, (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online 
           FROM users u
           WHERE u.id != ? 
@@ -14,6 +14,7 @@ $query = "SELECT u.id, u.username, (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE,
           LIMIT 5";
 
 $stmt = $pdo->prepare($query);
+// Prosleđujemo ulogovani user_id tri puta za sva tri znaka pitanja
 $stmt->execute([$user_id, $user_id, $user_id]);
 $suggestions = $stmt->fetchAll();
 
