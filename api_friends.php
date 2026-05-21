@@ -53,7 +53,7 @@ try {
             require_once "friends-actions/unfriend.php";
             break;
         case 'suggestions':
-            require_once "friends-actions/suggestions.php";
+            require_once "friends-actions/friend_suggestion.php";
             break;
 
         default:
