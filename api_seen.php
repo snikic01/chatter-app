@@ -1,17 +1,24 @@
 <?php
-header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Content-Type: application/json; charset=UTF-8");
 
-ini_set('display_errors', 0); error_reporting(0);
+// CORS POPRAVKA: Ako Android šalje OPTIONS proveru, odmah mu odgovori sa OK
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+ini_set('display_errors', 0); 
+error_reporting(0);
 
 try {
     $pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "chatter_user", "chatter_pass123", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
 
-        $rawInput = file_get_contents("php://input");
+    $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
     $action   = isset($inputData['action']) ? trim($inputData['action']) : 'mark';
@@ -49,4 +56,9 @@ try {
         echo json_encode(["success" => true]);
         exit;
     }
+
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    exit;
+} // POPRAVLJENO: Zatvorena zagrada za celi try-catch blok!
 ?>
