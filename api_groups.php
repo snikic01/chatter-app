@@ -31,12 +31,23 @@ try {
         $user_id = $stmt->fetchColumn() ?: 0;
     }
 
-    // --- 🚨 OD BLOKADA: Članovi grupe se čitaju PRE provere ulogovanog korisnika ---
+    // --- NOVO: OŽIVLJAVANJE LAMPICA — BILO KO DA SE POJAVI NA APi-JU, ODMAH MU OSVEŽAVAMO LAST_SEEN ---
+    if ($user_id > 0) {
+        $updateSeenStmt = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?");
+        $updateSeenStmt->execute([$user_id]);
+    }
+
+    // --- OD BLOKADA: Članovi grupe se čitaju PRE provere ulogovanog korisnika ---
     if ($action === 'members') {
         require_once "group-actions/members.php";
     }
 
-    // Za sve preostale akcije korisnik mora biti ulogovan
+    // --- OD BLOKADA: Pretraga korisnika za autodopunu se takođe čita PRE blokade ---
+    if ($action === 'search_users') {
+        require_once "group-actions/search_users.php";
+    }
+
+    // Za sve preostale akcije (list, create, leave, delete, kick, add) korisnik mora biti ulogovan
     if ($user_id <= 0) {
         echo json_encode(["success" => false, "message" => "User ID ili Korisnik je obavezan!", "groups" => []]);
         exit;
@@ -59,19 +70,13 @@ try {
         case 'kick':
             require_once "group-actions/kick.php";
             break;
-        // CASE GRANUA ZA DODAVANJE:
         case 'add':
             require_once "group-actions/add_member.php";
-            break;
-        // PRETRAGA ZA KORISNIKOM
-        case 'search_users':
-            require_once "group-actions/search_users.php";
             break;
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata akcija!"]);
             exit;
     }
-
 
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
