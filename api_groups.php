@@ -160,6 +160,65 @@ try {
         exit;
     }
 
+        // ================= 1b. LISTA SVIH ČLANOVA SELEKTOVANE GRUPE =================
+    if ($action === 'members') {
+        $group_id = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
+
+        if ($group_id <= 0) {
+            echo json_encode(["success" => false, "message" => "Group ID je obavezan!"]);
+            exit;
+        }
+
+        // UNION SQL upit: Prvo vuče vlasnika (1), pa spaja sa svim običnim članovima (0)
+        $query = "SELECT u.id, u.username, 1 AS is_owner 
+                  FROM users u 
+                  JOIN chat_groups g ON u.id = g.owner_id 
+                  WHERE g.id = ?
+                  
+                  UNION 
+                  
+                  SELECT u.id, u.username, 0 AS is_owner 
+                  FROM users u 
+                  JOIN group_members gm ON u.id = gm.user_id 
+                  WHERE gm.group_id = ?";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$group_id, $group_id]);
+        $members = $stmt->fetchAll();
+
+        echo json_encode(["success" => true, "members" => $members]);
+        exit;
+    }
+
+    // --- 1c. IZBACIVANJE ČLANA IZ GRUPE (SAMO ZA VLASNIKA) ---
+    if ($action === 'kick') {
+        $group_id     = isset($inputData['group_id']) ? intval($inputData['group_id']) : 0;
+        $kick_user_id = isset($inputData['kick_user_id']) ? intval($inputData['kick_user_id']) : 0;
+
+        // Proveravamo da li je korisnik koji šalje zahtev zapravo vlasnik te grupe
+        $stmt = $pdo->prepare("SELECT owner_id FROM chat_groups WHERE id = ?");
+        $stmt->execute([$group_id]);
+        $owner_id = (int)$stmt->fetchColumn();
+
+        if ($owner_id !== $user_id) {
+            echo json_encode(["success" => false, "message" => "Nemate ovlašćenje da izbacujete članove!"]);
+            exit;
+        }
+
+        if ($kick_user_id === $owner_id) {
+            echo json_encode(["success" => false, "message" => "Ne možete izbaciti sami sebe!"]);
+            exit;
+        }
+
+        // Brišemo člana iz grupe
+        $stmt = $pdo->prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ?");
+        $stmt->execute([$group_id, $kick_user_id]);
+
+        echo json_encode(["success" => true, "message" => "Korisnik izbačen!"]);
+        exit;
+    }
+
+
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
