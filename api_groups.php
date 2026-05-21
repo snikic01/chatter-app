@@ -63,6 +63,10 @@ try {
         case 'add':
             require_once "group-actions/add_member.php";
             break;
+        // PRETRAGA ZA KORISNIKOM
+        case 'search_users':
+            require_once "group-actions/search_users.php";
+            break;
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata akcija!"]);
             exit;
