@@ -8,7 +8,7 @@ if (empty($friend_username)) {
     exit;
 }
 
-// Saznajemo ID korisnika
+// Saznajemo ID korisnika kog želiš da dodaš
 $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
 $stmt->execute([$friend_username]);
 $receiver_id = $stmt->fetchColumn();
@@ -18,8 +18,8 @@ if (!$receiver_id || $receiver_id == $user_id) {
     exit;
 }
 
-// Provera da li već postoji bilo kakav zahtev ili prijateljstvo
-$stmtCheck = $pdo->prepare("SELECT 1 FROM friends WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)");
+// Provera da li već postoji bilo kakav zahtev ili prijateljstvo u bazi
+$stmtCheck = $pdo->prepare("SELECT 1 FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)");
 $stmtCheck->execute([$user_id, $receiver_id, $receiver_id, $user_id]);
 
 if ($stmtCheck->fetch()) {
@@ -27,8 +27,8 @@ if ($stmtCheck->fetch()) {
     exit;
 }
 
-// Upisujemo 'pending' zahtev u bazu
-$stmtInsert = $pdo->prepare("INSERT INTO friends (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
+// Upisujemo zahtev (ti si user_id, on je friend_id)
+$stmtInsert = $pdo->prepare("INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, 'pending')");
 $stmtInsert->execute([$user_id, $receiver_id]);
 
 echo json_encode(["success" => true, "message" => "Zahtev poslat!"]);
