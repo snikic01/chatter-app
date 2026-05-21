@@ -8,7 +8,7 @@ if ($group_id <= 0) {
     exit;
 }
 
-// UNION: Prvo vuče vlasnika (1), pa spaja sa svim običnim članovima (0)
+// POPRAVLJENO: Druga grana sada preskače vlasnika grupe pomoću podupita, sprečavajući dupliranje!
 $query = "SELECT CAST(u.id AS CHAR) as id, u.username, 1 AS is_owner 
           FROM users u 
           JOIN chat_groups g ON u.id = g.owner_id 
@@ -19,10 +19,12 @@ $query = "SELECT CAST(u.id AS CHAR) as id, u.username, 1 AS is_owner
           SELECT CAST(u.id AS CHAR) as id, u.username, 0 AS is_owner 
           FROM users u 
           JOIN group_members gm ON u.id = gm.user_id 
-          WHERE gm.group_id = ?";
+          WHERE gm.group_id = ? 
+          AND gm.user_id != (SELECT owner_id FROM chat_groups WHERE id = ?)";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute([$group_id, $group_id]);
+// Važno: Sada imamo 3 znaka pitanja, pa ID grupe prosleđujemo tri puta u execute!
+$stmt->execute([$group_id, $group_id, $group_id]);
 $members = $stmt->fetchAll();
 
 echo json_encode(["success" => true, "members" => $members]);
