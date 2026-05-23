@@ -20,7 +20,7 @@ try {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    // Sigurno čitanje parametara sa telefona (bilo kroz POST JSON ili GET URL)
+    // POPRAVLJENO: Ako parametri za lajk i komentare stignu kroz URL, PHP ih sada bezbedno čita preko $_GET niza
     $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
     $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
     $user_id      = isset($inputData['user_id']) ? intval($inputData['user_id']) : (isset($_GET['user_id']) ? intval($_GET['user_id']) : 0);
@@ -30,6 +30,7 @@ try {
     $title        = isset($inputData['title']) ? trim($inputData['title']) : (isset($_GET['title']) ? trim($_GET['title']) : '');
     $content      = isset($inputData['content']) ? trim($inputData['content']) : (isset($_GET['content']) ? trim($_GET['content']) : '');
     $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : (isset($_GET['board_color']) ? trim($_GET['board_color']) : 'standard');
+
 
     // POPRAVLJENO: Vraćen ispravan upit za traženje ID-ja korisnika iz users tabele!
     if ($user_id <= 0 && !empty($username)) {
