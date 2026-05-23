@@ -13,27 +13,26 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Čitamo sirovo JSON telo (za POST zahteve kao što je slanje poruke)
+    // Čitamo sirovo JSON telo (za POST zahteve kao što su mark i send)
     $rawInput = file_get_contents("php://input");
     $jsonData = json_decode($rawInput, true) ?? [];
 
-    // POPRAVLJENO: Spajamo sve u jedan siguran niz parametara (JSON + $_POST + $_GET)
-    // Ovo garantuje da PHP uvek vidi parametre, bez obzira da li Ktor šalje GET URL ili POST body!
+    // POPRAVLJENO: Spajamo sve dolazne nizove u jedan siguran niz parametara
+    // Ovo garantuje da PHP uvek vidi podatke, bez obzira da li Ktor šalje GET URL parametre ili POST JSON body!
     $allInputs = array_merge($_GET, $_POST, $jsonData);
 
     if (empty($allInputs) && !empty($_SERVER['QUERY_STRING'])) {
         parse_str($_SERVER['QUERY_STRING'], $allInputs);
     }
 
-    // Čitamo parametre iz spojenog, sigurnog niza
     $action       = isset($allInputs['action']) ? trim($allInputs['action']) : 'list';
     $username     = isset($allInputs['username']) ? trim($allInputs['username']) : '';
     $chat_user_id = isset($allInputs['chat_user_id']) ? intval($allInputs['chat_user_id']) : 0;
     $message_text = isset($allInputs['message']) ? trim($allInputs['message']) : '';
 
-    // DODATNI FALLBACK: Ako telefon iz nekog razloga i dalje pošalje prazno ime, stavljamo ulogovani nalog 'nikic' da se ekran ne sruši
     if (empty($username)) {
-        $username = 'nikic';
+        echo json_encode(["success" => false, "message" => "Korisničko ime je obavezno!"]);
+        exit;
     }
 
     // Pronalazimo ID ulogovanog korisnika preko njegovog username-a
@@ -46,12 +45,12 @@ try {
         exit;
     }
 
-    // Prosleđujemo identične varijable u sve podfajlove radi stopostotne kompatibilnosti
+    // Unifikujemo varijable za sve podfajlove radi stopostotne kompatibilnosti
     $user_id = $my_id;
     $pravi_vlasnik_id = $my_id;
     $trenutni_user_id = $my_id;
 
-        // Rutiranje ka fajlovima unutar private-actions foldera
+    // Rutiranje ka fajlovima unutar private-actions foldera
     switch ($action) {
         case 'list':
             require_once "private-actions/list_chats.php";
@@ -65,7 +64,7 @@ try {
             require_once "private-actions/send_private.php";
             break;
 
-        // POPRAVLJENO: Podržavamo i 'seen' i 'mark' akciju koju tvoj Android kod ispaljuje pri kliku!
+        // POPRAVLJENO: Podržavamo i akciju 'seen' i akciju 'mark' koju tvoj Android kod ispaljuje pri kliku!
         case 'seen':
         case 'mark':
             require_once "private-actions/mark_seen.php";
@@ -75,7 +74,6 @@ try {
             echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija!"]);
             exit;
     }
-
 
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
