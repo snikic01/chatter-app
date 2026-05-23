@@ -7,16 +7,16 @@ if ($chat_user_id <= 0) {
 }
 
 try {
-    // Automatski označavamo sve primljene poruke od tog prijatelja kao pročitane čim uđeš u čet
+    // 1. Označavamo sve primljene poruke od tog prijatelja kao pročitane (seen = 1)
     $pdo->prepare("
         UPDATE private_messages 
         SET seen = 1 
         WHERE sender_id = ? AND receiver_id = ? AND seen = 0
     ")->execute([$chat_user_id, $my_id]);
 
-    // Povlačimo kompletnu istoriju dopisivanja hronološki
+    // 2. Povlačimo kompletnu istoriju dopisivanja hronološki
     $stmtChat = $pdo->prepare("
-        SELECT pm.sender_id, pm.message, pm.created_at, u.username
+        SELECT pm.id, pm.sender_id, pm.message, pm.created_at, u.username, pm.seen
         FROM private_messages pm
         JOIN users u ON pm.sender_id = u.id
         WHERE (pm.sender_id = ? AND pm.receiver_id = ?) OR (pm.sender_id = ? AND pm.receiver_id = ?)
@@ -27,14 +27,18 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
+        // POPRAVLJENO: Šaljemo ključeve "date" i "seen" koje tvoj originalni Kotlin kod striktno traži!
         $messages[] = [
+            "id" => intval($row['id']),
             "username" => $row['username'],
             "message" => $row['message'],
-            "sent_at" => $row['created_at'],
-            "is_mine" => (intval($row['sender_id']) === $my_id)
+            "date" => $row['created_at'], // Usaglašeno sa Ktor klijentom!
+            "seen" => intval($row['seen']), // Vraća 1 ili 0
+            "is_mine" => (intval($row['sender_id']) === intval($my_id))
         ];
     }
 
+    // Vraćamo success true i niz poruka
     echo json_encode([
         "success" => true,
         "messages" => $messages
