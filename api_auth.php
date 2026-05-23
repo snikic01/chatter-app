@@ -10,7 +10,6 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 try {
-    // Konekcija preko tvog ispravnog chatter_user naloga
     $pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "chatter_user", "chatter_pass123", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
@@ -38,8 +37,6 @@ try {
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        
-        // Povezano sa tvojom tacnom strukturom tabele users
         $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, is_banned) VALUES (?, ?, 0)");
         
         if ($stmt->execute([$username, $hashedPassword])) {
@@ -47,6 +44,7 @@ try {
                 "success" => true,
                 "status" => "success",
                 "message" => "Uspešna registracija!",
+                "user_id" => intval($pdo->lastInsertId()), // Sada vraća novi ID korisnika
                 "username" => $username
             ]);
         } else {
@@ -57,7 +55,6 @@ try {
 
     // ================= PRIJAVA (LOGIN) =================
     if ($action === 'login') {
-        // Trazimo id i ispravnu kolonu password_hash
         $stmt = $pdo->prepare("SELECT id, password_hash, is_banned FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $userRow = $stmt->fetch();
@@ -73,6 +70,7 @@ try {
                     "success" => true,
                     "status" => "success",
                     "message" => "Uspešna prijava!",
+                    "user_id" => intval($userRow['id']), // Sada vraća postojeći ID korisnika
                     "username" => $username
                 ]);
                 exit;
