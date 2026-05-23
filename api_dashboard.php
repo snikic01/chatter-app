@@ -30,6 +30,7 @@ try {
     $content      = isset($inputData['content']) ? trim($inputData['content']) : '';
     $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : 'standard';
 
+    // Ako nemamo user_id, a imamo username, pronalazimo id korisnika
     if ($user_id <= 0 && !empty($username)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
@@ -44,11 +45,15 @@ try {
     // Osvežavamo vreme aktivnosti čim se otvori ili osveži dashboard
     $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")->execute([$user_id]);
 
-    // Provera da li je ulogovani korisnik admin
-    $stmtAdmin = $pdo->prepare("SELECT role FROM users WHERE id = ?");
-    $stmtAdmin->execute([$user_id]);
-    $userRole = $stmtAdmin->fetchColumn() ?: 'user';
-    $is_admin = ($userRole === 'admin');
+    // POPRAVLJENO: Pošto kolona 'role' ne postoji, proveravamo da li je ulogovan nalog 'snikic01'
+    // Ukoliko tvoj nalog ima administratorska prava, biće označen kao admin
+    if (empty($username) && $user_id > 0) {
+        $stmtName = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmtName->execute([$user_id]);
+        $username = $stmtName->fetchColumn() ?: '';
+    }
+    
+    $is_admin = ($username === 'snikic01');
 
     // Modularno rutiranje ka fajlovima u folderu dashboard-actions
     switch ($action) {
@@ -85,7 +90,6 @@ try {
             break;
 
         case 'post_add':
-            // Kreiranje nove objave (Samo snikic01 / admin)
             if ($username !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za kreiranje objava!"]);
                 exit;
@@ -94,7 +98,6 @@ try {
             break;
 
         case 'post_edit':
-            // Izmena postojeće objave (Samo snikic01 / admin)
             if ($username !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za izmenu objava!"]);
                 exit;
@@ -103,7 +106,6 @@ try {
             break;
 
         case 'post_delete':
-            // Brisanje objave sa table (Samo snikic01 / admin)
             if ($username !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za brisanje objava!"]);
                 exit;
