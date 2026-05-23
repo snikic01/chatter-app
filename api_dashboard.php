@@ -20,7 +20,7 @@ try {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    // POPRAVLJENO: Ako podaci ne stignu kroz JSON body (POST), skripta ih bezbedno čita iz URL-a (GET)
+    // Sigurno čitanje parametara sa telefona (bilo kroz POST JSON ili GET URL)
     $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
     $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
     $user_id      = isset($inputData['user_id']) ? intval($inputData['user_id']) : (isset($_GET['user_id']) ? intval($_GET['user_id']) : 0);
@@ -31,22 +31,9 @@ try {
     $content      = isset($inputData['content']) ? trim($inputData['content']) : (isset($_GET['content']) ? trim($_GET['content']) : '');
     $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : (isset($_GET['board_color']) ? trim($_GET['board_color']) : 'standard');
 
-
-    // Ako nemamo user_id, a imamo username, pronalazimo id korisnika
+    // POPRAVLJENO: Vraćen ispravan upit za traženje ID-ja korisnika iz users tabele!
     if ($user_id <= 0 && !empty($username)) {
-        $stmt = $pdo->prepare("
-    SELECT 
-        nc.id, 
-        nc.news_id, 
-        nc.user_id, 
-        nc.comment_text, 
-        nc.created_at, 
-        u.username 
-    FROM news_comments nc
-    JOIN users u ON nc.user_id = u.id
-    WHERE nc.news_id = ?
-    ORDER BY nc.created_at ASC
-");
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $user_id = $stmt->fetchColumn() ?: 0;
     }
@@ -59,16 +46,13 @@ try {
     // Osvežavamo vreme aktivnosti čim se otvori ili osveži dashboard
     $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?")->execute([$user_id]);
 
-    // POPRAVLJENO: Pošto kolona 'role' ne postoji, proveravamo da li je ulogovan nalog 'snikic01'
-    // Ukoliko tvoj nalog ima administratorska prava, biće označen kao admin
-        // POPRAVLJENO: Uvek čitamo username direktno iz baze preko ID-ja radi sigurnosti
+    // Uvek čitamo username direktno iz baze preko ID-ja radi sigurnosti provere uloga
     $stmtCheck = $pdo->prepare("SELECT username FROM users WHERE id = ?");
     $stmtCheck->execute([$user_id]);
     $realUsername = $stmtCheck->fetchColumn() ?: '';
 
     // Admin je isključivo nalog snikic01
     $is_admin = ($realUsername === 'snikic01');
-
 
     // Modularno rutiranje ka fajlovima u folderu dashboard-actions
     switch ($action) {
@@ -96,11 +80,6 @@ try {
             require_once "dashboard-actions/delete_comment.php";
             break;
 
-        case 'comments_list':
-            require_once "dashboard-actions/list_comments.php";
-            break;
-
-
         case 'admin_logs':
             if (!$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate administratorska prava!"]);
@@ -110,7 +89,7 @@ try {
             break;
 
         case 'post_add':
-            if ($username !== 'snikic01' && !$is_admin) {
+            if ($realUsername !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za kreiranje objava!"]);
                 exit;
             }
@@ -118,7 +97,7 @@ try {
             break;
 
         case 'post_edit':
-            if ($username !== 'snikic01' && !$is_admin) {
+            if ($realUsername !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za izmenu objava!"]);
                 exit;
             }
@@ -126,7 +105,7 @@ try {
             break;
 
         case 'post_delete':
-            if ($username !== 'snikic01' && !$is_admin) {
+            if ($realUsername !== 'snikic01' && !$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za brisanje objava!"]);
                 exit;
             }
