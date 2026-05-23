@@ -2,15 +2,15 @@
 // private-actions/fetch_messages.php
 
 if ($chat_user_id <= 0) {
-    echo json_encode(["success" => false, "message" => "ID prijatelja nedostaje unutar fetch akcije!"]);
+    echo json_encode(["success" => false, "message" => "ID prijatelja nedostaje!"]);
     exit;
 }
 
 try {
-    // Označavamo sve primljene poruke od tog prijatelja kao pročitane čim uđeš u čet
+    // Označavamo poruke kao viđene pri ulasku u čet
     $pdo->prepare("UPDATE private_messages SET seen = 1 WHERE sender_id = ? AND receiver_id = ? AND seen = 0")->execute([$chat_user_id, $my_id]);
 
-    // Povlačimo kompletnu istoriju dopisivanja hronološki
+    // Tvoj originalni i stabilni SQL upit za istoriju poruka
     $stmtChat = $pdo->prepare("
         SELECT pm.sender_id, pm.message, pm.created_at, u.username
         FROM private_messages pm
@@ -23,11 +23,11 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
-        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' sa razmakom i vremenom koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
+        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
         $messages[] = [
             "username" => $row['username'],
             "message" => $row['message'],
-            "date" => $row['created_at'], // "YYYY-MM-DD HH:MM:SS" format koji substringBefore bezbedno seče!
+            "date" => $row['created_at'], // <--- OVDE JE KLJUČ! Format koji substringBefore uspešno seče bez pucanja!
             "is_mine" => (intval($row['sender_id']) === intval($my_id))
         ];
     }
@@ -39,7 +39,7 @@ try {
     exit;
 
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "Greška u fetch_messages: " . $e->getMessage()]);
+    echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
 }
 ?>
