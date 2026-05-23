@@ -85,9 +85,9 @@ try {
             break;
 
         case 'comments_list':
-        case 'list_comment':
             require_once "dashboard-actions/list_comments.php";
             break;
+
 
         case 'admin_logs':
             if (!$is_admin) {
