@@ -1,23 +1,33 @@
 <?php
 // private-actions/list_chats.php
 
-// POPRAVLJENO: Uzimamo ID korisnika kako god da se zove promenljiva iz rutera api_private.php
-$trenutni_user_id = 0;
-if (isset($my_id) && $my_id > 0) {
-    $trenutni_user_id = $my_id;
-} elseif (isset($user_id) && $user_id > 0) {
-    $trenutni_user_id = $user_id;
-} elseif (isset($_GET['user_id'])) {
-    $trenutni_user_id = intval($_GET['user_id']);
+// Eksplicitno čitamo username ulogovanog korisnika sa telefona da zaobiđemo PHP scope bagove
+$trenutni_username = '';
+if (isset($username) && !empty($username)) {
+    $trenutni_username = $username;
+} elseif (isset($_GET['username'])) {
+    $trenutni_username = trim($_GET['username']);
+} elseif (isset($inputData['username'])) {
+    $trenutni_username = trim($inputData['username']);
 }
 
-if ($trenutni_user_id <= 0) {
-    echo json_encode(["success" => false, "message" => "ID korisnika je neispravan unutar akcije!"]);
+if (empty($trenutni_username)) {
+    echo json_encode(["success" => false, "message" => "Korisničko ime nedostaje u list_chats!"]);
     exit;
 }
 
 try {
-    // Tvoj originalni i stabilni SQL upit, spojen sa tabelom 'friends' za prihvaćene prijatelje
+    // 1. Sami izvlačimo tvoj pravi ID iz baze preko prosleđenog imena
+    $stmtUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmtUser->execute([$trenutni_username]);
+    $pravi_vlasnik_id = $stmtUser->fetchColumn() ?: 0;
+
+    if ($pravi_vlasnik_id <= 0) {
+        echo json_encode(["success" => false, "message" => "Korisnik nije pronađen u bazi podataka!"]);
+        exit;
+    }
+
+    // 2. Tvoj originalni i stabilni SQL upit, zaključan ISKLJUČIVO na prihvaćene prijatelje!
     $query = "SELECT u.id, u.username,
               (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
               (SELECT pm.message FROM private_messages pm 
@@ -41,20 +51,20 @@ try {
     
     // Prosleđujemo sigurno izračunati ID tačno 8 puta za svaki upitnik u SQL-u
     $stmt->execute([
-        $trenutni_user_id, $trenutni_user_id, 
-        $trenutni_user_id, $trenutni_user_id, 
-        $trenutni_user_id, 
-        $trenutni_user_id, $trenutni_user_id, 
-        $trenutni_user_id
+        $pravi_vlasnik_id, $pravi_vlasnik_id, 
+        $pravi_vlasnik_id, $pravi_vlasnik_id, 
+        $pravi_vlasnik_id, 
+        $pravi_vlasnik_id, $pravi_vlasnik_id, 
+        $pravi_vlasnik_id
     ]);
     $chats = $stmt->fetchAll();
 
-    // Vraćamo uspešan i čist JSON odgovor koji tvoj Android i model savršeno razumeju
+    // Vraćamo uspešan odgovor nazad na telefon
     echo json_encode(["success" => true, "chats" => $chats]);
     exit;
 
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "SQL Greška: " . $e->getMessage()]);
+    echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
 }
 ?>
