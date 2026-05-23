@@ -20,15 +20,17 @@ try {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    $action       = isset($inputData['action']) ? trim($inputData['action']) : 'list';
-    $username     = isset($inputData['username']) ? trim($inputData['username']) : '';
-    $user_id      = isset($inputData['user_id']) ? intval($inputData['user_id']) : 0;
-    $post_id      = isset($inputData['post_id']) ? intval($inputData['post_id']) : 0;
-    $comment_id   = isset($inputData['comment_id']) ? intval($inputData['comment_id']) : 0;
-    $comment_text = isset($inputData['comment_text']) ? trim($inputData['comment_text']) : '';
-    $title        = isset($inputData['title']) ? trim($inputData['title']) : '';
-    $content      = isset($inputData['content']) ? trim($inputData['content']) : '';
-    $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : 'standard';
+    // POPRAVLJENO: Ako podaci ne stignu kroz JSON body (POST), skripta ih bezbedno čita iz URL-a (GET)
+    $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
+    $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
+    $user_id      = isset($inputData['user_id']) ? intval($inputData['user_id']) : (isset($_GET['user_id']) ? intval($_GET['user_id']) : 0);
+    $post_id      = isset($inputData['post_id']) ? intval($inputData['post_id']) : (isset($_GET['post_id']) ? intval($_GET['post_id']) : 0);
+    $comment_id   = isset($inputData['comment_id']) ? intval($inputData['comment_id']) : (isset($_GET['comment_id']) ? intval($_GET['comment_id']) : 0);
+    $comment_text = isset($inputData['comment_text']) ? trim($inputData['comment_text']) : (isset($_GET['comment_text']) ? trim($_GET['comment_text']) : '');
+    $title        = isset($inputData['title']) ? trim($inputData['title']) : (isset($_GET['title']) ? trim($_GET['title']) : '');
+    $content      = isset($inputData['content']) ? trim($inputData['content']) : (isset($_GET['content']) ? trim($_GET['content']) : '');
+    $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : (isset($_GET['board_color']) ? trim($_GET['board_color']) : 'standard');
+
 
     // Ako nemamo user_id, a imamo username, pronalazimo id korisnika
     if ($user_id <= 0 && !empty($username)) {
