@@ -7,16 +7,12 @@ if ($chat_user_id <= 0) {
 }
 
 try {
-    // 1. Označavamo sve primljene poruke od tog prijatelja kao pročitane čim uđeš u čet
-    $pdo->prepare("
-        UPDATE private_messages 
-        SET seen = 1 
-        WHERE sender_id = ? AND receiver_id = ? AND seen = 0
-    ")->execute([$chat_user_id, $my_id]);
+    // Označavamo sve primljene poruke od tog prijatelja kao pročitane čim uđeš u čet
+    $pdo->prepare("UPDATE private_messages SET seen = 1 WHERE sender_id = ? AND receiver_id = ? AND seen = 0")->execute([$chat_user_id, $my_id]);
 
-    // 2. Povlačimo kompletnu istoriju dopisivanja hronološki
+    // Povlačimo kompletnu istoriju dopisivanja hronološki
     $stmtChat = $pdo->prepare("
-        SELECT pm.id, pm.sender_id, pm.message, pm.created_at, u.username, pm.seen
+        SELECT pm.sender_id, pm.message, pm.created_at, u.username
         FROM private_messages pm
         JOIN users u ON pm.sender_id = u.id
         WHERE (pm.sender_id = ? AND pm.receiver_id = ?) OR (pm.sender_id = ? AND pm.receiver_id = ?)
@@ -27,12 +23,12 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
-        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
+        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' sa razmakom i vremenom koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
         $messages[] = [
             "username" => $row['username'],
             "message" => $row['message'],
-            "date" => $row['created_at'], // Vraća "YYYY-MM-DD HH:MM:SS" format koji substringBefore bezbedno seče!
-            "seen" => intval($row['seen'])
+            "date" => $row['created_at'], // "YYYY-MM-DD HH:MM:SS" format koji substringBefore bezbedno seče!
+            "is_mine" => (intval($row['sender_id']) === intval($my_id))
         ];
     }
 
