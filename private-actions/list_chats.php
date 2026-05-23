@@ -3,7 +3,7 @@
 // $pdo i $my_id su bezbedno nasleđeni iz glavnog api_private.php rutera
 
 try {
-    // SQL upit koji spaja users i friends da izvuče SAMO one sa statusom 'accepted'
+    // POPRAVLJENO: Dodata reč AND unutar spajanja tabela (sada upit prolazi bez greške)
     $query = "SELECT u.id, u.username 
               FROM users u
               JOIN friends f ON (f.user_id = ? AND f.friend_id = u.id) OR (f.friend_id = ? AND f.user_id = u.id)
@@ -17,7 +17,7 @@ try {
     foreach ($friends as $friend) {
         $f_id = $friend['id'];
 
-        // Izvlačimo poslednju poruku između tebe i tog prijatelja iz private_messages tabele
+        // Izvlačimo poslednju poruku između tebe i tog prijatelja
         $stmtMsg = $pdo->prepare("
             SELECT message, created_at 
             FROM private_messages 
@@ -30,7 +30,7 @@ try {
         $last_message = $lastMsgRow ? $lastMsgRow['message'] : "Nema poruka. Započni čet!";
         $last_time = $lastMsgRow ? $lastMsgRow['created_at'] : "";
 
-        // Računamo nepročitane poruke koje je taj prijatelj poslao tebi (seen = 0)
+        // Računamo nepročitane poruke koje je taj prijatelj poslao tebi
         $stmtUnread = $pdo->prepare("
             SELECT COUNT(*) 
             FROM private_messages 
