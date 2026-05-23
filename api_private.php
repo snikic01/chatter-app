@@ -44,18 +44,36 @@ try {
     // Rutiranje ka fajlovima unutar private-actions foldera sa tvoje slike
     switch ($action) {
         case 'list':
+            // POPRAVLJENO: Dupliramo varijable pod svim nazivima koje podfajlovi mogu da traže
+            // tako da upit u list_chats.php nikada više ne dobije nulu ili prazan ID!
+            $user_id = $my_id;
+            $pravi_vlasnik_id = $my_id;
+            $trenutni_user_id = $my_id;
+            
             require_once "private-actions/list_chats.php";
             break;
 
         case 'fetch':
+            $user_id = $my_id;
+            $pravi_vlasnik_id = $my_id;
+            $trenutni_user_id = $my_id;
+            
             require_once "private-actions/fetch_messages.php";
             break;
 
         case 'send':
+            $user_id = $my_id;
+            $pravi_vlasnik_id = $my_id;
+            $trenutni_user_id = $my_id;
+            
             require_once "private-actions/send_private.php";
             break;
 
         case 'seen':
+            $user_id = $my_id;
+            $pravi_vlasnik_id = $my_id;
+            $trenutni_user_id = $my_id;
+            
             require_once "private-actions/mark_seen.php";
             break;
 
