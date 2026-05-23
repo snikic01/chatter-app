@@ -27,12 +27,11 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
-        // POPRAVLJENO: Šaljemo ključ 'date' u ispravnom formatu koji tvoj Kotlin kod .substringBefore(" ") uspešno čita!
+        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
         $messages[] = [
-            "id" => intval($row['id']),
             "username" => $row['username'],
             "message" => $row['message'],
-            "date" => $row['created_at'], // Vraća "YYYY-MM-DD HH:MM:SS" format baze podataka
+            "date" => $row['created_at'], // Vraća "YYYY-MM-DD HH:MM:SS" format koji substringBefore bezbedno seče!
             "seen" => intval($row['seen'])
         ];
     }
