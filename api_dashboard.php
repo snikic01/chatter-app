@@ -34,7 +34,19 @@ try {
 
     // Ako nemamo user_id, a imamo username, pronalazimo id korisnika
     if ($user_id <= 0 && !empty($username)) {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+        $stmt = $pdo->prepare("
+    SELECT 
+        nc.id, 
+        nc.news_id, 
+        nc.user_id, 
+        nc.comment_text, 
+        nc.created_at, 
+        u.username 
+    FROM news_comments nc
+    JOIN users u ON nc.user_id = u.id
+    WHERE nc.news_id = ?
+    ORDER BY nc.created_at ASC
+");
         $stmt->execute([$username]);
         $user_id = $stmt->fetchColumn() ?: 0;
     }
