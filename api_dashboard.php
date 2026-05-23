@@ -47,13 +47,14 @@ try {
 
     // POPRAVLJENO: Pošto kolona 'role' ne postoji, proveravamo da li je ulogovan nalog 'snikic01'
     // Ukoliko tvoj nalog ima administratorska prava, biće označen kao admin
-    if (empty($username) && $user_id > 0) {
-        $stmtName = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-        $stmtName->execute([$user_id]);
-        $username = $stmtName->fetchColumn() ?: '';
-    }
-    
-    $is_admin = ($username === 'snikic01');
+        // POPRAVLJENO: Uvek čitamo username direktno iz baze preko ID-ja radi sigurnosti
+    $stmtCheck = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+    $stmtCheck->execute([$user_id]);
+    $realUsername = $stmtCheck->fetchColumn() ?: '';
+
+    // Admin je isključivo nalog snikic01
+    $is_admin = ($realUsername === 'snikic01');
+
 
     // Modularno rutiranje ka fajlovima u folderu dashboard-actions
     switch ($action) {
