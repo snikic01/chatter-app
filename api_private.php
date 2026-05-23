@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
@@ -13,7 +13,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Čitamo JSON body ili GET/POST parametre
     $rawInput = file_get_contents("php://input");
     $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
 
@@ -21,50 +20,52 @@ try {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    // Defaultna akcija je 'list' (prikaz svih privatnih četova)
-    $action   = isset($inputData['action']) ? trim($inputData['action']) : 'list';
-    $username = isset($inputData['username']) ? trim($inputData['username']) : '';
-    $user_id  = isset($inputData['user_id']) ? intval($inputData['user_id']) : 0;
+    // Čitamo parametre koje Android šalje kroz URL ili JSON body
+    $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
+    $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
+    $chat_user_id = isset($inputData['chat_user_id']) ? intval($inputData['chat_user_id']) : (isset($_GET['chat_user_id']) ? intval($_GET['chat_user_id']) : 0);
+    $message_text = isset($inputData['message']) ? trim($inputData['message']) : (isset($_GET['message']) ? trim($_GET['message']) : '');
 
-    // Saznajemo ID ulogovanog korisnika na osnovu njegovog username-a
-    if ($user_id <= 0 && !empty($username)) {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user_id = $stmt->fetchColumn() ?: 0;
-    }
-
-    // Stroga provera: Za bilo koju privatnu akciju korisnik mora biti ulogovan
-    if ($user_id <= 0) {
-        echo json_encode(["success" => false, "message" => "User ID ili Korisnik je obavezan!", "chats" => []]);
+    if (empty($username)) {
+        echo json_encode(["success" => false, "message" => "Korisničko ime je obavezno!"]);
         exit;
     }
 
-    // --- OŽIVLJAVANJE LAMPICA ---
-    // Čim ulogovani korisnik pošalje bilo kakav zahtev za privatne poruke, odmah mu osvežavamo last_seen status u bazi!
-    $updateSeenStmt = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?");
-    $updateSeenStmt->execute([$user_id]);
+    // Pronalazimo ID ulogovanog korisnika preko njegovog username-a
+    $stmtUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmtUser->execute([$username]);
+    $my_id = $stmtUser->fetchColumn() ?: 0;
 
-    // --- MODULARNO RUTIRANJE ZA PRIVATNE ČETOVE ---
+    if ($my_id <= 0) {
+        echo json_encode(["success" => false, "message" => "Korisnik ne postoji u sistemu!"]);
+        exit;
+    }
+
+    // Rutiranje ka fajlovima unutar private-actions foldera sa tvoje slike
     switch ($action) {
         case 'list':
             require_once "private-actions/list_chats.php";
             break;
+
         case 'fetch':
             require_once "private-actions/fetch_messages.php";
             break;
+
         case 'send':
             require_once "private-actions/send_private.php";
             break;
-        case 'mark':
+
+        case 'seen':
             require_once "private-actions/mark_seen.php";
             break;
+
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija!"]);
             exit;
     }
 
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "Greška na privatnom API-ju: " . $e->getMessage()]);
+    echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
 }
 ?>
