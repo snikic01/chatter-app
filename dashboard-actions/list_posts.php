@@ -1,11 +1,12 @@
 <?php
-// Osiguravamo se da imamo pristup PDO konekciji i parametrima iz api_dashboard.php
-// $pdo, $user_id, i $username su vec definisani u glavnom fajlu!
+// POPRAVLJENO: Ako user_id iz globalnog opsega stigne kao 0, pronalazimo ga preko username-a
+if ((!isset($user_id) || $user_id <= 0) && !empty($username)) {
+    $stmtUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmtUser->execute([$username]);
+    $user_id = $stmtUser->fetchColumn() ?: 0;
+}
 
 try {
-    // SQL upit koji povlači sve objave iz admin_news tabele.
-    // Preko podupita (Subqueries) računamo ukupan broj lajkova i komentara za svaki post,
-    // i proveravamo da li je trenutno ulogovani korisnik lajkovao tu objavu (user_liked).
     $query = "SELECT 
                 an.id,
                 an.title,
@@ -22,7 +23,6 @@ try {
     $stmt->execute([$user_id]);
     $postsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Dupliramo ključeve u nizu tako da JSON šalje nazive koje tvoj Android ViewModel i models traže
     $posts = [];
     foreach ($postsRaw as $row) {
         $posts[] = [
@@ -33,12 +33,11 @@ try {
             "type" => $row['type'],
             "likes_count" => intval($row['likes_count']),
             "comments_count" => intval($row['comments_count']),
-            "is_liked" => intval($row['user_liked']), // Ključ koji proverava da li je srce crveno ili sivo
+            "is_liked" => intval($row['user_liked']), // Ključ koji Kotlin models traži
             "user_liked" => intval($row['user_liked'])
         ];
     }
 
-    // Vraćamo uspešan JSON odgovor sa nizom objava (posts) koji Android ViewModel traži
     echo json_encode([
         "success" => true,
         "is_admin" => $is_admin,
@@ -47,10 +46,7 @@ try {
     exit;
 
 } catch (Exception $e) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Greška u list_posts: " . $e->getMessage()
-    ]);
+    echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
     exit;
 }
 ?>
