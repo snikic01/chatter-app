@@ -84,8 +84,9 @@ try {
             require_once "dashboard-actions/delete_comment.php";
             break;
 
+        case 'comments_list':
         case 'list_comment':
-            require_once "dashboard-actions/list_comment.php";
+            require_once "dashboard-actions/list_comments.php";
             break;
 
         case 'admin_logs':
