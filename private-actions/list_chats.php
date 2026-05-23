@@ -1,78 +1,38 @@
 <?php
 // private-actions/list_chats.php
 
-$trenutni_username = '';
-if (isset($username) && !empty($username)) {
-    $trenutni_username = $username;
-} elseif (isset($_GET['username'])) {
-    $trenutni_username = trim($_GET['username']);
-} elseif (isset($inputData['username'])) {
-    $trenutni_username = trim($inputData['username']);
-}
+// POPRAVLJENO: Koristimo tvoj originalni upit sa is_online i parametrima, 
+// ali spajamo tabelu 'friends' kako bismo prikazali samo prihvaćene prijatelje!
+$query = "SELECT u.id, u.username,
+          (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
+          (SELECT pm.message FROM private_messages pm 
+           WHERE pm.group_id IS NULL AND (
+                 (pm.sender_id = u.id AND pm.receiver_id = ?) 
+              OR (pm.sender_id = ? AND pm.receiver_id = u.id)
+           ) ORDER BY pm.id DESC LIMIT 1) as last_message,
+          (SELECT pm.created_at FROM private_messages pm 
+           WHERE pm.group_id IS NULL AND (
+                 (pm.sender_id = u.id AND pm.receiver_id = ?) 
+              OR (pm.sender_id = ? AND pm.receiver_id = u.id)
+           ) ORDER BY pm.id DESC LIMIT 1) as last_message_time,
+          (SELECT COUNT(*) FROM private_messages pm 
+           WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = ? AND pm.seen = 0) as unread_count
+          FROM users u
+          JOIN friends f ON (f.user_id = ? AND f.friend_id = u.id) OR (f.friend_id = ? AND f.user_id = u.id)
+          WHERE f.status = 'accepted' AND u.id != ?
+          ORDER BY last_message_time DESC, u.username ASC";
 
-if (empty($trenutni_username)) {
-    echo json_encode(["success" => false, "message" => "Korisničko ime nedostaje u list_chats!"]);
-    exit;
-}
+$stmt = $pdo->prepare($query);
 
-try {
-    // Koristimo imenovani parametar :username tačno onako kako je prošlo u tvojoj konzoli!
-    $query = "SELECT 
-                u.id, 
-                u.username,
-                COALESCE(
-                    (SELECT pm.message 
-                     FROM private_messages pm 
-                     WHERE (pm.sender_id = (SELECT id FROM users WHERE username = :username) AND pm.receiver_id = u.id) 
-                        OR (pm.sender_id = u.id AND pm.receiver_id = (SELECT id FROM users WHERE username = :username))
-                     ORDER BY pm.created_at DESC LIMIT 1), 
-                    'Nema poruka. Započni čet!'
-                ) AS last_message,
-                COALESCE(
-                    (SELECT pm.created_at 
-                     FROM private_messages pm 
-                     WHERE (pm.sender_id = (SELECT id FROM users WHERE username = :username) AND pm.receiver_id = u.id) 
-                        OR (pm.sender_id = u.id AND pm.receiver_id = (SELECT id FROM users WHERE username = :username))
-                     ORDER BY pm.created_at DESC LIMIT 1), 
-                    ''
-                ) AS last_time,
-                (SELECT COUNT(*) 
-                 FROM private_messages pm 
-                 WHERE pm.sender_id = u.id 
-                   AND pm.receiver_id = (SELECT id FROM users WHERE username = :username) 
-                   AND pm.seen = 0) AS unread_count
-            FROM users u
-            JOIN friends f ON (f.user_id = (SELECT id FROM users WHERE username = :username) AND f.friend_id = u.id)
-                           OR (f.friend_id = (SELECT id FROM users WHERE username = :username) AND f.user_id = u.id)
-            WHERE f.status = 'accepted' 
-              AND u.username != :username";
+// POPRAVLJENO: Prosleđujemo tačno onoliko parametara koliko upitnika imamo u SQL-u (sada ukupno 8)
+$stmt->execute([
+    $user_id, $user_id, // Za prvi podupit (last_message)
+    $user_id, $user_id, // Za drugi podupit (last_message_time)
+    $user_id,           // Za treći podupit (unread_count)
+    $user_id, $user_id, // Za JOIN friends uslov (user_id i friend_id smera)
+    $user_id            // Za WHERE filter (osim tebe)
+]);
+$chats = $stmt->fetchAll();
 
-    $stmt = $pdo->prepare($query);
-    
-    // PDO drajver sam automatski mapira reč :username na svim mestima u upitu odjednom!
-    $stmt->execute([':username' => $trenutni_username]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $chats = [];
-    foreach ($rows as $row) {
-        $chats[] = [
-            "id" => intval($row['id']),
-            "username" => $row['username'],
-            "last_message" => $row['last_message'],
-            "last_time" => $row['last_time'],
-            "unread_count" => intval($row['unread_count'])
-        ];
-    }
-
-    // Šaljemo čist i ispravan JSON odgovor nazad na Android telefon
-    echo json_encode([
-        "success" => true,
-        "chats" => $chats
-    ]);
-    exit;
-
-} catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "SQL Greška: " . $e->getMessage()]);
-    exit;
-}
-?>
+echo json_encode(["success" => true, "chats" => $chats]);
+exit;
