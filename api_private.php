@@ -65,7 +65,7 @@ try {
             require_once "private-actions/send_private.php";
             break;
 
-        // POPRAVLJENO: Povezujemo i 'seen' i 'mark' akciju sa istim fajlom kako bi se balončić ugasio!
+        // POPRAVLJENO: Podržavamo i 'seen' i 'mark' akciju koju tvoj Android kod ispaljuje pri kliku!
         case 'seen':
         case 'mark':
             require_once "private-actions/mark_seen.php";
