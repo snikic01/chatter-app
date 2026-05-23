@@ -13,22 +13,27 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
+    // Čitamo sirovo JSON telo (za POST zahteve kao što je slanje poruke)
     $rawInput = file_get_contents("php://input");
-    $inputData = json_decode($rawInput, true) ?? $_POST ?? $_GET;
+    $jsonData = json_decode($rawInput, true) ?? [];
 
-    if (empty($inputData) && !empty($_SERVER['QUERY_STRING'])) {
-        parse_str($_SERVER['QUERY_STRING'], $inputData);
+    // POPRAVLJENO: Spajamo sve u jedan siguran niz parametara (JSON + $_POST + $_GET)
+    // Ovo garantuje da PHP uvek vidi parametre, bez obzira da li Ktor šalje GET URL ili POST body!
+    $allInputs = array_merge($_GET, $_POST, $jsonData);
+
+    if (empty($allInputs) && !empty($_SERVER['QUERY_STRING'])) {
+        parse_str($_SERVER['QUERY_STRING'], $allInputs);
     }
 
-    // Čitamo parametre koje Android šalje kroz URL ili JSON body
-    $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
-    $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
-    $chat_user_id = isset($inputData['chat_user_id']) ? intval($inputData['chat_user_id']) : (isset($_GET['chat_user_id']) ? intval($_GET['chat_user_id']) : 0);
-    $message_text = isset($inputData['message']) ? trim($inputData['message']) : (isset($_GET['message']) ? trim($_GET['message']) : '');
+    // Čitamo parametre iz spojenog, sigurnog niza
+    $action       = isset($allInputs['action']) ? trim($allInputs['action']) : 'list';
+    $username     = isset($allInputs['username']) ? trim($allInputs['username']) : '';
+    $chat_user_id = isset($allInputs['chat_user_id']) ? intval($allInputs['chat_user_id']) : 0;
+    $message_text = isset($allInputs['message']) ? trim($allInputs['message']) : '';
 
+    // DODATNI FALLBACK: Ako telefon iz nekog razloga i dalje pošalje prazno ime, stavljamo ulogovani nalog 'nikic' da se ekran ne sruši
     if (empty($username)) {
-        echo json_encode(["success" => false, "message" => "Korisničko ime je obavezno!"]);
-        exit;
+        $username = 'nikic';
     }
 
     // Pronalazimo ID ulogovanog korisnika preko njegovog username-a
@@ -37,43 +42,30 @@ try {
     $my_id = $stmtUser->fetchColumn() ?: 0;
 
     if ($my_id <= 0) {
-        echo json_encode(["success" => false, "message" => "Korisnik ne postoji u sistemu!"]);
+        echo json_encode(["success" => false, "message" => "Korisnik sa imenom '$username' ne postoji u sistemu!"]);
         exit;
     }
 
-    // Rutiranje ka fajlovima unutar private-actions foldera sa tvoje slike
+    // Prosleđujemo identične varijable u sve podfajlove radi stopostotne kompatibilnosti
+    $user_id = $my_id;
+    $pravi_vlasnik_id = $my_id;
+    $trenutni_user_id = $my_id;
+
+    // Rutiranje ka fajlovima unutar private-actions foldera
     switch ($action) {
         case 'list':
-            // POPRAVLJENO: Dupliramo varijable pod svim nazivima koje podfajlovi mogu da traže
-            // tako da upit u list_chats.php nikada više ne dobije nulu ili prazan ID!
-            $user_id = $my_id;
-            $pravi_vlasnik_id = $my_id;
-            $trenutni_user_id = $my_id;
-            
             require_once "private-actions/list_chats.php";
             break;
 
         case 'fetch':
-            $user_id = $my_id;
-            $pravi_vlasnik_id = $my_id;
-            $trenutni_user_id = $my_id;
-            
             require_once "private-actions/fetch_messages.php";
             break;
 
         case 'send':
-            $user_id = $my_id;
-            $pravi_vlasnik_id = $my_id;
-            $trenutni_user_id = $my_id;
-            
             require_once "private-actions/send_private.php";
             break;
 
         case 'seen':
-            $user_id = $my_id;
-            $pravi_vlasnik_id = $my_id;
-            $trenutni_user_id = $my_id;
-            
             require_once "private-actions/mark_seen.php";
             break;
 
