@@ -27,36 +27,30 @@ try {
         exit;
     }
 
-    // 2. Tvoj originalni i stabilni SQL upit, zaključan ISKLJUČIVO na prihvaćene prijatelje!
+    // 2. POPRAVLJENO: Koristimo :my_id imenovani parametar da drajver sam bez greške uveže ID na svih 8 mesta!
     $query = "SELECT u.id, u.username,
               (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
               (SELECT pm.message FROM private_messages pm 
                WHERE pm.group_id IS NULL AND (
-                     (pm.sender_id = u.id AND pm.receiver_id = ?) 
-                  OR (pm.sender_id = ? AND pm.receiver_id = u.id)
+                     (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                  OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
                ) ORDER BY pm.id DESC LIMIT 1) as last_message,
               (SELECT pm.created_at FROM private_messages pm 
                WHERE pm.group_id IS NULL AND (
-                     (pm.sender_id = u.id AND pm.receiver_id = ?) 
-                  OR (pm.sender_id = ? AND pm.receiver_id = u.id)
+                     (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                  OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
                ) ORDER BY pm.id DESC LIMIT 1) as last_message_time,
               (SELECT COUNT(*) FROM private_messages pm 
-               WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = ? AND pm.seen = 0) as unread_count
+               WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = :my_id AND pm.seen = 0) as unread_count
               FROM users u
-              JOIN friends f ON (f.user_id = ? AND f.friend_id = u.id) OR (f.friend_id = ? AND f.user_id = u.id)
-              WHERE f.status = 'accepted' AND u.id != ?
+              JOIN friends f ON (f.user_id = :my_id AND f.friend_id = u.id) OR (f.friend_id = :my_id AND f.user_id = u.id)
+              WHERE f.status = 'accepted' AND u.id != :my_id
               ORDER BY last_message_time DESC, u.username ASC";
 
     $stmt = $pdo->prepare($query);
     
-    // Prosleđujemo sigurno izračunati ID tačno 8 puta za svaki upitnik u SQL-u
-    $stmt->execute([
-        $pravi_vlasnik_id, $pravi_vlasnik_id, 
-        $pravi_vlasnik_id, $pravi_vlasnik_id, 
-        $pravi_vlasnik_id, 
-        $pravi_vlasnik_id, $pravi_vlasnik_id, 
-        $pravi_vlasnik_id
-    ]);
+    // PDO drajver automatski i bezbedno preslikava vrednost na svih 8 mesta odjednom!
+    $stmt->execute([':my_id' => $pravi_vlasnik_id]);
     $chats = $stmt->fetchAll();
 
     // Vraćamo uspešan odgovor nazad na telefon
