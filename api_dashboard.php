@@ -82,6 +82,10 @@ try {
             require_once "dashboard-actions/delete_comment.php";
             break;
 
+        case 'list_comment':
+            require_once "dashboard-actions/list_comment.php";
+            break;
+
         case 'admin_logs':
             if (!$is_admin) {
                 echo json_encode(["success" => false, "message" => "Nemate administratorska prava!"]);
