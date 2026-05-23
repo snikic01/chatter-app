@@ -51,7 +51,7 @@ try {
     $pravi_vlasnik_id = $my_id;
     $trenutni_user_id = $my_id;
 
-    // Rutiranje ka fajlovima unutar private-actions foldera
+        // Rutiranje ka fajlovima unutar private-actions foldera
     switch ($action) {
         case 'list':
             require_once "private-actions/list_chats.php";
@@ -65,7 +65,9 @@ try {
             require_once "private-actions/send_private.php";
             break;
 
+        // POPRAVLJENO: Povezujemo i 'seen' i 'mark' akciju sa istim fajlom kako bi se balončić ugasio!
         case 'seen':
+        case 'mark':
             require_once "private-actions/mark_seen.php";
             break;
 
@@ -73,6 +75,7 @@ try {
             echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija!"]);
             exit;
     }
+
 
 } catch (Exception $e) {
     echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);

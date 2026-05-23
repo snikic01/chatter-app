@@ -7,7 +7,7 @@ if ($chat_user_id <= 0) {
 }
 
 try {
-    // 1. Označavamo sve primljene poruke od tog prijatelja kao pročitane (seen = 1)
+    // 1. Označavamo sve primljene poruke od tog prijatelja kao pročitane čim uđeš u čet
     $pdo->prepare("
         UPDATE private_messages 
         SET seen = 1 
@@ -27,18 +27,16 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
-        // POPRAVLJENO: Šaljemo ključeve "date" i "seen" koje tvoj originalni Kotlin kod striktno traži!
+        // POPRAVLJENO: Šaljemo ključ 'date' u ispravnom formatu koji tvoj Kotlin kod .substringBefore(" ") uspešno čita!
         $messages[] = [
             "id" => intval($row['id']),
             "username" => $row['username'],
             "message" => $row['message'],
-            "date" => $row['created_at'], // Usaglašeno sa Ktor klijentom!
-            "seen" => intval($row['seen']), // Vraća 1 ili 0
-            "is_mine" => (intval($row['sender_id']) === intval($my_id))
+            "date" => $row['created_at'], // Vraća "YYYY-MM-DD HH:MM:SS" format baze podataka
+            "seen" => intval($row['seen'])
         ];
     }
 
-    // Vraćamo success true i niz poruka
     echo json_encode([
         "success" => true,
         "messages" => $messages
