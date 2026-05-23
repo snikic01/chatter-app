@@ -1,29 +1,21 @@
 <?php
-// dashboard-actions/delete_comment.php
-$comment_id = isset($inputData['comment_id']) ? intval($inputData['comment_id']) : 0;
+if (empty($comment_id) && isset($_GET['comment_id'])) $comment_id = intval($_GET['comment_id']);
 
-if ($comment_id <= 0) {
-    echo json_encode(["success" => false, "message" => "ID komentara je obavezan!"]);
+if ($comment_id <= 0 || $user_id <= 0) {
+    echo json_encode(["success" => false, "message" => "Korisnik ili ID komentara nedostaje!"]);
     exit;
 }
 
-// Provera vlasnika komentara
-$stmt = $pdo->prepare("SELECT user_id FROM news_comments WHERE id = ?");
-$stmt->execute([$comment_id]);
-$comment_author_id = $stmt->fetchColumn();
+// Provera prava: Samo admin (snikic01) ili vlasnik komentara može da briše
+$stmtCheck = $pdo->prepare("SELECT user_id FROM news_comments WHERE id = ?");
+$stmtCheck->execute([$comment_id]);
+$commentOwner = $stmtCheck->fetchColumn();
 
-if (!$comment_author_id) {
-    echo json_encode(["success" => false, "message" => "Komentar ne postoji!"]);
-    exit;
-}
-
-// Admin briše sve, običan korisnik samo svoj komentar
-if ($is_admin || $user_id === intval($comment_author_id)) {
-    $delete = $pdo->prepare("DELETE FROM news_comments WHERE id = ?");
-    $delete->execute([$comment_id]);
-    
-    echo json_encode(["success" => true, "message" => "Komentar uspešno obrisan!"]);
+// $is_admin je već definisan u glavnom api_dashboard.php fajlu
+if ($commentOwner == $user_id || $is_admin) {
+    $pdo->prepare("DELETE FROM news_comments WHERE id = ?")->execute([$comment_id]);
+    echo json_encode(["success" => true]);
 } else {
-    echo json_encode(["success" => false, "message" => "Nemate dozvolu za brisanje tuđih komentara!"]);
+    echo json_encode(["success" => false, "message" => "Nemate ovlašćenje za brisanje ovog komentara!"]);
 }
 exit;

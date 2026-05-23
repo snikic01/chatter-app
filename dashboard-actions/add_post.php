@@ -1,21 +1,17 @@
 <?php
-// dashboard-actions/add_post.php
-$title   = isset($inputData['title']) ? trim($inputData['title']) : '';
-$content = isset($inputData['content']) ? trim($inputData['content']) : '';
-$type    = isset($inputData['board_color']) ? trim($inputData['board_color']) : 'standard'; // 'standard' ili 'urgent'
+if (empty($title) && isset($_GET['title'])) $title = trim($_GET['title']);
+if (empty($content) && isset($_GET['content'])) $content = trim($_GET['content']);
+if (empty($board_color) && isset($_GET['board_color'])) $board_color = trim($_GET['board_color']);
 
 if (empty($title) || empty($content)) {
-    echo json_encode(["success" => false, "message" => "Naslov i sadržaj objave su obavezni!"]);
+    echo json_encode(["success" => false, "message" => "Naslov i sadržaj su obavezni!"]);
     exit;
 }
 
-// Osiguravamo da se unosi isključivo jedna od dve dozvoljene boje/tipa
-if ($type !== 'standard' && $type !== 'urgent') {
-    $type = 'standard';
+$stmt = $pdo->prepare("INSERT INTO admin_news (title, content, created_at, type) VALUES (?, ?, NOW(), ?)");
+if ($stmt->execute([$title, $content, $board_color])) {
+    echo json_encode(["success" => true]);
+} else {
+    echo json_encode(["success" => false, "message" => "Greška pri kreiranju objave."]);
 }
-
-$stmt = $pdo->prepare("INSERT INTO admin_news (title, content, type, created_at) VALUES (?, ?, ?, NOW())");
-$stmt->execute([$title, $content, $type]);
-
-echo json_encode(["success" => true, "message" => "Nova objava je uspešno postavljena na tablu!"]);
 exit;

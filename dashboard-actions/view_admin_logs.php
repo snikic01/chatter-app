@@ -1,22 +1,11 @@
 <?php
-// dashboard-actions/view_admin_logs.php
-
-// Selektujemo podatke direktno iz login_logs jer tabela već sadrži tekstualni username
-$logs_query = "SELECT 
-                    id AS log_id, 
-                    ip_address, 
-                    login_time, 
-                    username AS user_name 
-               FROM login_logs 
-               ORDER BY id DESC 
-               LIMIT 50";
-
-$stmt = $pdo->prepare($logs_query);
+// Povlači istoriju logovanja iz login_logs tabele koju smo videli u tvojoj bazi
+$stmt = $pdo->prepare("SELECT id, username, ip_address, login_time FROM login_logs ORDER BY login_time DESC LIMIT 50");
 $stmt->execute();
-$logs = $stmt->fetchAll();
+$logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([
     "success" => true,
     "logs" => $logs
-], JSON_UNESCAPED_UNICODE);
+]);
 exit;
