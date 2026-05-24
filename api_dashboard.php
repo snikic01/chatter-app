@@ -20,7 +20,16 @@ try {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    // POPRAVLJENO: Ako parametri za lajk i komentare stignu kroz URL, PHP ih sada bezbedno čita preko $_GET niza
+    // 🛠️ PANCIRNI PRESRETAČ SAOBRAĆAJA ZA KTOR BAG: 
+    // Ako primetimo privatne akcije koje su greškom zalutale na dashboard ruter,
+    // odmah ručno preusmeravamo rad na api_private.php da telefon ne bi dobio pogrešan JSON!
+    $proveraAkcije = isset($inputData['action']) ? trim($inputData['action']) : '';
+    if ($proveraAkcije === 'fetch' || $proveraAkcije === 'send' || $proveraAkcije === 'seen' || $proveraAkcije === 'mark') {
+        require "api_private.php";
+        exit;
+    }
+
+    // Izvlačenje parametara sa podrazumevanim vrednostima
     $action       = isset($inputData['action']) ? trim($inputData['action']) : (isset($_GET['action']) ? trim($_GET['action']) : 'list');
     $username     = isset($inputData['username']) ? trim($inputData['username']) : (isset($_GET['username']) ? trim($_GET['username']) : '');
     $user_id      = isset($inputData['user_id']) ? intval($inputData['user_id']) : (isset($_GET['user_id']) ? intval($_GET['user_id']) : 0);
@@ -31,8 +40,14 @@ try {
     $content      = isset($inputData['content']) ? trim($inputData['content']) : (isset($_GET['content']) ? trim($_GET['content']) : '');
     $board_color  = isset($inputData['board_color']) ? trim($inputData['board_color']) : (isset($_GET['board_color']) ? trim($_GET['board_color']) : 'standard');
 
+    // 🛠️ NAJVAŽNIJI FILTER: Ako je akcija 'list' ali nema parametra user_id, a zahtev stiže iz privatnih poruka,
+    // to je 100% Ktor-ov bag sa keširanjem ruta! Preusmeravamo ga pravo na privatni ruter.
+    if ($action === 'list' && $user_id <= 0 && !empty($username) && !isset($inputData['board_color'])) {
+        require "api_private.php";
+        exit;
+    }
 
-    // POPRAVLJENO: Vraćen ispravan upit za traženje ID-ja korisnika iz users tabele!
+    // Traženje ID-ja korisnika iz users tabele
     if ($user_id <= 0 && !empty($username)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
