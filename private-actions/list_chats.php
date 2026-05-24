@@ -47,7 +47,11 @@ try {
         ];
     }
 
-    echo json_encode(["success" => true, "chats" => $formattedChats]);
+    echo json_encode([
+        "success" => true, 
+        "chats" => $formattedChats,
+        "provera_koda" => "VERZIJA_2" // <--- DODAJ OVU SVEŽU LINIJU KODA OVDE!
+    ]);
     exit;
 
 } catch (Exception $e) {
