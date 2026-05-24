@@ -13,12 +13,11 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Čitamo sirovo JSON telo (za POST zahteve kao što su mark i send)
+    // Čitamo sirovo JSON telo
     $rawInput = file_get_contents("php://input");
     $jsonData = json_decode($rawInput, true) ?? [];
 
-    // POPRAVLJENO: Spajamo sve dolazne nizove u jedan siguran niz parametara
-    // Ovo garantuje da PHP uvek vidi podatke, bez obzira da li Ktor šalje GET URL parametre ili POST JSON body!
+    // Spajamo sve u jedan niz parametara
     $allInputs = array_merge($_GET, $_POST, $jsonData);
 
     if (empty($allInputs) && !empty($_SERVER['QUERY_STRING'])) {
@@ -27,7 +26,11 @@ try {
 
     $action       = isset($allInputs['action']) ? trim($allInputs['action']) : 'list';
     $username     = isset($allInputs['username']) ? trim($allInputs['username']) : '';
+    
+    // Čitamo ID sagovornika
     $chat_user_id = isset($allInputs['chat_user_id']) ? intval($allInputs['chat_user_id']) : 0;
+    
+    // Čitamo tekst poruke
     $message_text = isset($allInputs['message']) ? trim($allInputs['message']) : '';
 
     if (empty($username)) {
@@ -35,7 +38,7 @@ try {
         exit;
     }
 
-    // Pronalazimo ID ulogovanog korisnika preko njegovog username-a
+    // Pronalazimo ID ulogovanog korisnika
     $stmtUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmtUser->execute([$username]);
     $my_id = $stmtUser->fetchColumn() ?: 0;
@@ -45,29 +48,39 @@ try {
         exit;
     }
 
-    // Unifikujemo varijable za sve podfajlove radi stopostotne kompatibilnosti
+    // =========================================================================
+    // MAKSIMALNA KOMPATIBILNOST SA SVIM PODFAJLOVIMA (Unifikacija varijabli)
+    // =========================================================================
+    // Za sopstveni ID
     $user_id = $my_id;
     $pravi_vlasnik_id = $my_id;
     $trenutni_user_id = $my_id;
 
-    // Rutiranje ka fajlovima unutar private-actions foldera
+    // Za ID sagovornika (Prijatelja)
+    $trenutni_chat_user_id = $chat_user_id;
+
+    // Za tekst poruke
+    $message = $message_text;
+    $trenutna_poruka = $message_text;
+    // =========================================================================
+
+    // Rutiranje ka fajlovima (Zamenjeno sa 'require' radi stabilnosti uzastopnih poziva)
     switch ($action) {
         case 'list':
-            require_once "private-actions/list_chats.php";
+            require "private-actions/list_chats.php";
             break;
 
         case 'fetch':
-            require_once "private-actions/fetch_messages.php";
+            require "private-actions/fetch_messages.php";
             break;
 
         case 'send':
-            require_once "private-actions/send_private.php";
+            require "private-actions/send_private.php";
             break;
 
-        // POPRAVLJENO: Podržavamo i akciju 'seen' i akciju 'mark' koju tvoj Android kod ispaljuje pri kliku!
         case 'seen':
         case 'mark':
-            require_once "private-actions/mark_seen.php";
+            require "private-actions/mark_seen.php";
             break;
 
         default:
