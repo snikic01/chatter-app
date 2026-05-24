@@ -7,10 +7,32 @@ if ($chat_user_id <= 0) {
 }
 
 try {
-    // Označavamo poruke kao viđene pri ulasku u čet
-    $pdo->prepare("UPDATE private_messages SET seen = 1 WHERE sender_id = ? AND receiver_id = ? AND seen = 0")->execute([$chat_user_id, $my_id]);
+    // 1. STROGA PROVERA PRIJATELJSTVA: Dopusti prolaz samo ako je status 'accepted'
+    $stmtCheck = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM friends 
+        WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)) 
+          AND status = 'accepted'
+    ");
+    $stmtCheck->execute([$my_id, $chat_user_id, $chat_user_id, $my_id]);
+    $isFriend = $stmtCheck->fetchColumn() > 0;
 
-    // Tvoj originalni i stabilni SQL upit za istoriju poruka
+    if (!$isFriend) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "Nemate pravo pristupa istoriji poruka. Korisnik vam nije prihvaćeni prijatelj!"
+        ]);
+        exit;
+    }
+
+    // 2. Označavamo poruke kao viđene pri ulasku u čet (sada je bezbedno jer znamo da su prijatelji)
+    $pdo->prepare("
+        UPDATE private_messages 
+        SET seen = 1 
+        WHERE sender_id = ? AND receiver_id = ? AND seen = 0
+    ")->execute([$chat_user_id, $my_id]);
+
+    // 3. Tvoj originalni i stabilni SQL upit za istoriju poruka
     $stmtChat = $pdo->prepare("
         SELECT pm.sender_id, pm.message, pm.created_at, u.username
         FROM private_messages pm
@@ -23,12 +45,12 @@ try {
 
     $messages = [];
     foreach ($rows as $row) {
-        // POPRAVLJENO MAPIRANJE: Šaljemo ključ 'date' koji tvoj Kotlin kod u PrivateScreen.kt striktno traži!
+        // MAPIRANJE: Zadržan ključ 'date' za bezbedan rad substringBefore u Kotlinu!
         $messages[] = [
             "username" => $row['username'],
-            "message" => $row['message'],
-            "date" => $row['created_at'], // <--- OVDE JE KLJUČ! Format koji substringBefore uspešno seče bez pucanja!
-            "is_mine" => (intval($row['sender_id']) === intval($my_id))
+            "message"  => $row['message'],
+            "date"     => $row['created_at'], 
+            "is_mine"  => (intval($row['sender_id']) === intval($my_id))
         ];
     }
 
