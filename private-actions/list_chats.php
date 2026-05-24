@@ -7,17 +7,14 @@ if (!isset($my_id) || $my_id <= 0) {
 }
 
 try {
-    // Koristimo tvoj provereni SQL upit, ali potpuno usklađen sa unifikovanim :my_id parametrom
+    // TVOJ STABILNI SQL UPIT: Propušta isključivo prihvaćene prijatelje
     $query = "SELECT u.id, u.username,
               (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
-              COALESCE(
-                  (SELECT pm.message FROM private_messages pm 
-                   WHERE pm.group_id IS NULL AND (
-                         (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
-                      OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
-                   ) ORDER BY pm.id DESC LIMIT 1), 
-                  'Nema poruka. Započni čet!'
-              ) as last_message,
+              (SELECT pm.message FROM private_messages pm 
+               WHERE pm.group_id IS NULL AND (
+                     (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                  OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
+               ) ORDER BY pm.id DESC LIMIT 1) as last_message,
               (SELECT pm.created_at FROM private_messages pm 
                WHERE pm.group_id IS NULL AND (
                      (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
@@ -38,7 +35,19 @@ try {
     $stmt->execute([':my_id' => $my_id]);
     $chats = $stmt->fetchAll();
 
-    echo json_encode(["success" => true, "chats" => $chats]);
+    // Čistimo eventualne null vrednosti za last_message da Ktor ne bi pukao pri čitanju stringa
+    $formattedChats = [];
+    foreach ($chats as $chat) {
+        $formattedChats[] = [
+            "id" => intval($chat['id']),
+            "username" => $chat['username'],
+            "is_online" => intval($chat['is_online']),
+            "last_message" => $chat['last_message'] ?? "Nema poruka. Započni čet!",
+            "unread_count" => intval($chat['unread_count'])
+        ];
+    }
+
+    echo json_encode(["success" => true, "chats" => $formattedChats]);
     exit;
 
 } catch (Exception $e) {
