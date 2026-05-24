@@ -59,23 +59,23 @@ try {
     $message = $message_text;
     $trenutna_poruka = $message_text;
 
-    // Rutiranje (Korišćenjem require_once kao u tvojim grupama)
+    // Rutiranje (Korišćenjem require)
     switch ($action) {
         case 'list':
-            require_once "private-actions/list_chats.php";
+            require "private-actions/list_chats.php";
             break;
 
         case 'fetch':
-            require_once "private-actions/fetch_messages.php";
+            require "private-actions/fetch_messages.php";
             break;
 
         case 'send':
-            require_once "private-actions/send_private.php";
+            require "private-actions/send_private.php";
             break;
 
         case 'seen':
         case 'mark':
-            require_once "private-actions/mark_seen.php";
+            require "private-actions/mark_seen.php";
             break;
 
         default:
