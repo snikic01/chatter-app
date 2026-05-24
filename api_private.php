@@ -45,9 +45,13 @@ try {
         $updateSeenStmt = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?");
         $updateSeenStmt->execute([$user_id]);
     }
-
-    if ($user_id <= 0) {
-        echo json_encode(["success" => false, "message" => "Korisničko ime je obavezno!", "chats" => [], "messages" => []]);
+if ($user_id <= 0) {
+        echo json_encode([
+            "success" => true, 
+            "message" => "Korisničko ime nije prepoznato ili je prazno.", 
+            "chats" => [], 
+            "messages" => []
+        ]);
         exit;
     }
 
