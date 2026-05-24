@@ -8,9 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 ini_set('display_errors', 0); error_reporting(0);
 
 try {
+    // UKLJUČENA EMULACIJA PREPARE-A DA BI ISTI PARAMETAR MOGAO DA SE KORISTI VIŠE PUTA
     $pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "chatter_user", "chatter_pass123", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => true // <--- DODAJ OVU LINIJU BUKVALNO OVDE!
     ]);
 
     // UNIVERZALNI PARSER KOJI RADI SA KTOR-om: Spaja JSON body, $_POST i $_GET bez blokiranja
