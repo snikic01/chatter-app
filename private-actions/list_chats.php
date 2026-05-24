@@ -1,13 +1,20 @@
 <?php
 // private-actions/list_chats.php
 
-if (!isset($my_id) || $my_id <= 0) {
-    echo json_encode(["success" => false, "message" => "ID korisnika nedostaje u list_chats!"]);
+// 🔍 PANCIRNI ZID: Ako ruter nije uspeo da pronađe tvoj pravi ID preko username-a,
+// odmah prekidamo izvršavanje i vraćamo USPEŠAN prazan niz. 
+// Ovo garantuje da se rezervni prikaz sa svim korisnicima nikada više ne može upaliti na telefonu!
+if (!isset($my_id) || intval($my_id) <= 0) {
+    echo json_encode([
+        "success" => true,
+        "chats" => [],
+        "poruka_sistema" => "Korisnički ID je nevalidan ili prazan. Prikaz je bezbedno očišćen."
+    ]);
     exit;
 }
 
 try {
-    // KONAČAN UPIT: Prisile bazu da uzme isključivo i jedino 'accepted' prijatelje iz tabele friends
+    // KONAČAN I POTPUNO BEZBEDAN SQL UPIT
     $query = "SELECT 
                 u.id, 
                 u.username,
@@ -28,7 +35,7 @@ try {
                 (SELECT COUNT(*) FROM private_messages pm 
                  WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = :my_id AND pm.seen = 0) as unread_count
               FROM users u
-              -- Hermetički filter: Uzimamo samo ljude gde je status prijateljstva zvanično 'accepted'
+              -- Hermetički filter: Uzimamo samo ljude gde je status prijateljstva u ovom sekundu 'accepted'
               INNER JOIN (
                   SELECT IF(user_id = :my_id, friend_id, user_id) AS prijatelj_id 
                   FROM friends 
@@ -59,7 +66,12 @@ try {
     exit;
 
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "SQL Greška: " . $e->getMessage()]);
+    // Čak i ako baza baci bilo kakvu grešku, vraćamo success: true sa praznim nalogom da telefon ne bi povukao sve ljude
+    echo json_encode([
+        "success" => true,
+        "chats" => [],
+        "poruka_greske" => $e->getMessage()
+    ]);
     exit;
 }
 ?>
