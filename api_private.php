@@ -13,58 +13,45 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Čitamo sirovo JSON telo
+    // Čitamo sve moguće dolazne podatke
     $rawInput = file_get_contents("php://input");
     $jsonData = json_decode($rawInput, true) ?? [];
-
-    // Spajamo sve u jedan niz parametara
     $allInputs = array_merge($_GET, $_POST, $jsonData);
 
     if (empty($allInputs) && !empty($_SERVER['QUERY_STRING'])) {
         parse_str($_SERVER['QUERY_STRING'], $allInputs);
     }
 
+    // Izvlačenje osnovnih parametara
     $action       = isset($allInputs['action']) ? trim($allInputs['action']) : 'list';
     $username     = isset($allInputs['username']) ? trim($allInputs['username']) : '';
-    
-    // Čitamo ID sagovornika
     $chat_user_id = isset($allInputs['chat_user_id']) ? intval($allInputs['chat_user_id']) : 0;
-    
-    // Čitamo tekst poruke
     $message_text = isset($allInputs['message']) ? trim($allInputs['message']) : '';
 
     if (empty($username)) {
-        echo json_encode(["success" => false, "message" => "Korisničko ime je obavezno!"]);
+        echo json_encode(["success" => false, "message" => "Korisničko ime (username) nedostaje u zahtevu!"]);
         exit;
     }
 
-    // Pronalazimo ID ulogovanog korisnika
+    // Pretvaramo prosleđeni username u ID ulogovanog korisnika
     $stmtUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmtUser->execute([$username]);
     $my_id = $stmtUser->fetchColumn() ?: 0;
 
     if ($my_id <= 0) {
-        echo json_encode(["success" => false, "message" => "Korisnik sa imenom '$username' ne postoji u sistemu!"]);
+        echo json_encode(["success" => false, "message" => "Korisnik sa imenom '$username' nije pronađen u bazi!"]);
         exit;
     }
 
-    // =========================================================================
-    // MAKSIMALNA KOMPATIBILNOST SA SVIM PODFAJLOVIMA (Unifikacija varijabli)
-    // =========================================================================
-    // Za sopstveni ID
+    // UNIFIKACIJA ZA SVE PODFAJLOVE (Garantuje vidljivost varijabli u require skriptama)
     $user_id = $my_id;
-    $pravi_vlasnik_id = $my_id;
     $trenutni_user_id = $my_id;
-
-    // Za ID sagovornika (Prijatelja)
+    $pravi_vlasnik_id = $my_id;
     $trenutni_chat_user_id = $chat_user_id;
-
-    // Za tekst poruke
     $message = $message_text;
     $trenutna_poruka = $message_text;
-    // =========================================================================
 
-    // Rutiranje ka fajlovima (Zamenjeno sa 'require' radi stabilnosti uzastopnih poziva)
+    // Rutiranje ka namenskim skriptama
     switch ($action) {
         case 'list':
             require "private-actions/list_chats.php";
@@ -84,12 +71,12 @@ try {
             break;
 
         default:
-            echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija!"]);
+            echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija: $action"]);
             exit;
     }
 
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "Greška: " . $e->getMessage()]);
+    echo json_encode(["success" => false, "message" => "Sistemska greška na ruteru: " . $e->getMessage()]);
     exit;
 }
 ?>
