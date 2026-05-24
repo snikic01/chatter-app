@@ -13,16 +13,21 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // ISTI UNIVERZALNI PARSER IZ TVOJIH GRUPA KOJI DOKAZANO RADI
+    // UNIVERZALNI PARSER DIREKTNO IZ TVOJIH GRUPA (Dokazano radi sa Ktor-om!)
     $rawInput = file_get_contents("php://input");
-    $jsonData = json_decode($rawInput, true) ?? [];
-    $inputData = array_merge($_GET, $_POST, $jsonData);
+    $inputData = json_decode($rawInput, true);
+    
+    // Ako JSON parsiranje vrati prazno, povlačimo standardni $_POST ili $_GET niz
+    if (!is_array($inputData)) {
+        $inputData = array_merge($_POST, $_GET);
+    } else {
+        $inputData = array_merge($_POST, $_GET, $inputData);
+    }
 
     if (empty($inputData) && !empty($_SERVER['QUERY_STRING'])) {
         parse_str($_SERVER['QUERY_STRING'], $inputData);
     }
 
-    // Čitanje privatnih akcija i podataka
     $action       = isset($inputData['action']) ? trim($inputData['action']) : 'list';
     $username     = isset($inputData['username']) ? trim($inputData['username']) : '';
     $chat_user_id = isset($inputData['chat_user_id']) ? intval($inputData['chat_user_id']) : 0;
@@ -35,7 +40,7 @@ try {
         $user_id = $stmt->fetchColumn() ?: 0;
     }
 
-    // Osvežavanje lampica uživo pri svakom privatnom polingu
+    // Automatsko osvežavanje last_seen statusa za lampice (Preslikano iz grupa)
     if ($user_id > 0) {
         $updateSeenStmt = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE id = ?");
         $updateSeenStmt->execute([$user_id]);
@@ -46,7 +51,7 @@ try {
         exit;
     }
 
-    // Unifikacija varijabli za podfajlove unutar private-actions foldera
+    // Unifikacija varijabli za sve privatne podfajlove
     $my_id = $user_id;
     $trenutni_user_id = $user_id;
     $pravi_vlasnik_id = $user_id;
@@ -54,21 +59,25 @@ try {
     $message = $message_text;
     $trenutna_poruka = $message_text;
 
-    // Rutiranje ka namenskim skriptama (korišćenjem require_once kao u grupama)
+    // Rutiranje (Korišćenjem require_once kao u tvojim grupama)
     switch ($action) {
         case 'list':
             require_once "private-actions/list_chats.php";
             break;
+
         case 'fetch':
             require_once "private-actions/fetch_messages.php";
             break;
+
         case 'send':
             require_once "private-actions/send_private.php";
             break;
+
         case 'seen':
         case 'mark':
             require_once "private-actions/mark_seen.php";
             break;
+
         default:
             echo json_encode(["success" => false, "message" => "Nepoznata privatna akcija!"]);
             exit;
