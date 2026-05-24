@@ -7,29 +7,34 @@ if (!isset($my_id) || $my_id <= 0) {
 }
 
 try {
-    // Upit koji spaja users i friends i garantuje filtriranje samo na accepted status
-    $query = "SELECT u.id, u.username,
-              (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
-              COALESCE(
-                  (SELECT pm.message FROM private_messages pm 
-                   WHERE pm.group_id IS NULL AND (
-                         (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
-                      OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
-                   ) ORDER BY pm.id DESC LIMIT 1), 
-                  'Nema poruka. Započni čet!'
-              ) as last_message,
-              (SELECT pm.created_at FROM private_messages pm 
-               WHERE pm.group_id IS NULL AND (
-                     (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
-                  OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
-               ) ORDER BY pm.id DESC LIMIT 1) as last_message_time,
-              (SELECT COUNT(*) FROM private_messages pm 
-               WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = :my_id AND pm.seen = 0) as unread_count
+    // ČISTI I STROGI INNER JOIN: Propušta isključivo i jedino 'accepted' prijatelje
+    $query = "SELECT 
+                u.id, 
+                u.username,
+                (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
+                COALESCE(
+                    (SELECT pm.message FROM private_messages pm 
+                     WHERE pm.group_id IS NULL AND (
+                           (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                        OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
+                     ) ORDER BY pm.id DESC LIMIT 1), 
+                    'Nema poruka. Započni čet!'
+                ) as last_message,
+                (SELECT pm.created_at FROM private_messages pm 
+                 WHERE pm.group_id IS NULL AND (
+                       (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                    OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
+                 ) ORDER BY pm.id DESC LIMIT 1) as last_message_time,
+                (SELECT COUNT(*) FROM private_messages pm 
+                 WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = :my_id AND pm.seen = 0) as unread_count
               FROM users u
-              JOIN friends f ON ((f.user_id = :my_id AND f.friend_id = u.id) OR (f.friend_id = :my_id AND f.user_id = u.id))
+              -- Prisile bazu da uzme samo ID-jeve ljudi koji su ti POTVRĐENI prijatelji
+              INNER JOIN (
+                  SELECT IF(user_id = :my_id, friend_id, user_id) AS prijatelj_id 
+                  FROM friends 
+                  WHERE (user_id = :my_id OR friend_id = :my_id) AND status = 'accepted'
+              ) f ON u.id = f.prijatelj_id
               WHERE u.id != :my_id
-                AND f.status = 'accepted'
-              GROUP BY u.id
               ORDER BY last_message_time DESC, u.username ASC";
 
     $stmt = $pdo->prepare($query);
@@ -50,7 +55,7 @@ try {
     echo json_encode([
         "success" => true, 
         "chats" => $formattedChats,
-        "provera_koda" => "VERZIJA_2" // <--- DODAJ OVU SVEŽU LINIJU KODA OVDE!
+        "provera_koda" => "VERZIJA_KONAČNA"
     ]);
     exit;
 
