@@ -1,21 +1,42 @@
 <?php
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+// private-actions/list_chats.php
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
-ini_set('display_errors', 0); error_reporting(0);
+if (!isset($my_id) || $my_id <= 0) {
+    echo json_encode(["success" => false, "message" => "ID korisnika nedostaje u list_chats!"]);
+    exit;
+}
 
 try {
-    // UKLJUČENA EMULACIJA PREPARE-A DA BI ISTI PARAMETAR MOGAO DA SE KORISTI VIŠE PUTA
-    $pdo = new PDO("mysql:host=localhost;dbname=chatter_db;charset=utf8mb4", "chatter_user", "chatter_pass123", [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => true // <--- DODAJ OVU LINIJU BUKVALNO OVDE!
-    ]);
-
-    // Ostatak tvog api_private.php koda ostaje potpuno isti...
+    // REŠENJE: Upit spaja tabele preko JOIN-a i koristi parametar samo na jednom mestu za maksimalnu stabilnost drajvera
+    $query = "SELECT 
+                u.id, 
+                u.username,
+                (IF(u.last_seen >= NOW() - INTERVAL 5 MINUTE, 1, 0)) as is_online,
+                COALESCE(
+                    (SELECT pm.message FROM private_messages pm 
+                     WHERE pm.group_id IS NULL AND (
+                           (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                        OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
+                     ) ORDER BY pm.id DESC LIMIT 1), 
+                    'Nema poruka. Započni čet!'
+                ) as last_message,
+                (SELECT pm.created_at FROM private_messages pm 
+                 WHERE pm.group_id IS NULL AND (
+                       (pm.sender_id = u.id AND pm.receiver_id = :my_id) 
+                    OR (pm.sender_id = :my_id AND pm.receiver_id = u.id)
+                 ) ORDER BY pm.id DESC LIMIT 1) as last_message_time,
+                (SELECT COUNT(*) FROM private_messages pm 
+                 WHERE pm.group_id IS NULL AND pm.sender_id = u.id AND pm.receiver_id = :my_id AND pm.seen = 0) as unread_count
+              FROM users u
+              -- Direktno spajanje sa tabelom prijatelja (Garantuje filtriranje)
+              JOIN friends f ON (
+                  (f.user_id = :my_id AND f.friend_id = u.id) OR 
+                  (f.friend_id = :my_id AND f.user_id = u.id)
+              )
+              WHERE u.id != :my_id
+                AND f.status = 'accepted'
+              GROUP BY u.id
+              ORDER BY last_message_time DESC, u.username ASC";
 
     $stmt = $pdo->prepare($query);
     
